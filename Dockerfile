@@ -1,7 +1,16 @@
 FROM php:8.2-apache
 
-# Extensions PHP requises par le site
-RUN docker-php-ext-install pdo_mysql mysqli
+# Librairies systeme requises par les extensions PHP (gd, zip)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpng-dev \
+        libjpeg-dev \
+        libfreetype6-dev \
+        libzip-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Extensions PHP requises par le site (gd pour phpspreadsheet)
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" gd zip pdo_mysql mysqli
 
 # Active la reecriture d'URL
 RUN a2enmod rewrite
