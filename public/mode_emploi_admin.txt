@@ -1,0 +1,69 @@
+Mode d’emploi Administrateur – FamiFormation
+
+Ce document PDF présente toutes les fonctionnalités du site pour le profil admin, enrichi de captures d’écran. Pour générer le PDF, merci d’ajouter vos captures dans le dossier (ex : screenshot1.png, screenshot2.png…).
+
+---
+
+# Sommaire
+1. Connexion
+2. Tableau de bord
+3. Gestion des utilisateurs
+4. Gestion des quiz et formations
+5. Évaluations
+6. Modules spécifiques (Management, Logistique, Animalerie)
+7. Sécurité et droits
+8. Déconnexion
+9. Support
+
+---
+
+## 1. Connexion
+Accédez à la page de connexion et saisissez vos identifiants.
+
+![Connexion](screenshot_connexion.png)
+
+## 2. Tableau de bord
+Après connexion, accédez à l’accueil avec toutes les tuiles de gestion.
+
+![Accueil](screenshot_accueil.png)
+
+## 3. Gestion des utilisateurs
+- Accédez à la tuile “Admin”.
+- Visualisez, filtrez, modifiez les utilisateurs.
+- Rendez un utilisateur actif/inactif.
+
+![Gestion utilisateurs](screenshot_admin.png)
+
+## 4. Gestion des quiz et formations
+- Ajoutez, modifiez, supprimez quiz et thèmes.
+- Suivez la progression.
+
+![Quiz](screenshot_quiz.png)
+
+## 5. Évaluations
+- Accédez à la page d’évaluation.
+- Gérez les grilles multi-examinateur.
+
+![Évaluation](screenshot_evaluation.png)
+
+## 6. Modules spécifiques
+- Management : droits selon rôle.
+- Logistique : accès aux documents.
+- Animalerie : charte bien-être.
+
+![Management](screenshot_management.png)
+![Logistique](screenshot_logistique.png)
+![Animalerie](screenshot_animalerie.png)
+
+## 7. Sécurité et droits
+Seul l’admin a tous les droits. Les autres rôles ont des accès restreints.
+
+## 8. Déconnexion
+Utilisez le bouton “Déconnexion”.
+
+## 9. Support
+Contactez le support en cas de besoin.
+
+---
+
+Pour enrichir ce PDF, placez vos captures dans le dossier et indiquez les noms à utiliser. Je peux ensuite générer le PDF final avec toutes les images intégrées.

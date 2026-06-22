@@ -1,0 +1,16 @@
+# Redirection automatique HTTP vers HTTPS et suppression du www
+RewriteEngine On
+
+RewriteRule ^vendor/ - [F,L,NC]
+
+# Redirige tout le trafic www vers non-www
+RewriteCond %{HTTP_HOST} ^www\.(.*)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# Redirige tout le trafic HTTP vers HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+<FilesMatch "(^\.|\.log$|\.sql$|\.bak$|^composer\.(json|lock|phar)$|^(README|CHANGELOG)\.md$|^mode_emploi_admin\.txt$|^INSTALL_PHPMailer\.txt$|^test.*\.(php|xlsx)$|^mon_horaire_test\.php$|^evaluation_temp\.json$)">
+	Require all denied
+</FilesMatch>

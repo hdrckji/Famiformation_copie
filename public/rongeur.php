@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rongeur</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: url('background.jpg') no-repeat center center fixed;
+            background-size: cover;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            text-align: center;
+            margin-top: 40px;
+        }
+        .logo {
+            width: 120px;
+            margin-bottom: 20px;
+        }
+        .pdf-frame {
+            display: block;
+            margin: 40px auto;
+            border: 2px solid #2d5a37;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            width: 80vw;
+            height: 80vh;
+            background: white;
+        }
+        .back-link {
+            display: block;
+            width: fit-content;
+            margin: 30px auto;
+            color: #2d5a37;
+            text-decoration: none;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 12px 25px;
+            border-radius: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .back-link:hover { background: #2d5a37; color: white; }
+        .quiz-link {
+            display: block;
+            width: fit-content;
+            margin: 0 auto 20px;
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+            background: #2d5a37;
+            padding: 12px 25px;
+            border-radius: 25px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+        }
+        .quiz-link:hover {
+            background: #1f4027;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="logo.png" alt="Famiflora" class="logo">
+        <h1>Rongeur</h1>
+    </div>
+    <iframe class="pdf-frame" src="rongeur.pdf"></iframe>
+    <a href="quiz_engine.php?theme=quiz_rongeur" class="quiz-link">Lancer le quizz Rongeur</a>
+    <a href="animalerie.php" class="back-link">← Retour à l'animalerie</a>
+</body>
+</html>

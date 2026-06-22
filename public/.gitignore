@@ -1,0 +1,28 @@
+# Environnement
+.env
+.env.local
+.env.*.php
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Systeme
+Thumbs.db
+.AppleDouble
+.LSOverride
+
+# Rapports / Backups
+*.sql
+backups/
+
+# node_modules (si futur)
+node_modules/

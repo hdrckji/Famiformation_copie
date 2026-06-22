@@ -1,0 +1,20 @@
+Pour utiliser PHPMailer avec ton projet :
+
+1. Ouvre un terminal dans le dossier du projet (/Users/wendy/Desktop/Beta6)
+2. Installe Composer si ce n'est pas déjà fait : https://getcomposer.org/download/
+3. Installe PHPMailer avec la commande :
+   composer require phpmailer/phpmailer
+
+4. Vérifie que le dossier 'vendor/' et le fichier 'vendor/autoload.php' sont bien créés.
+5. Modifie test_envoi_mail_smtp.php :
+   - Remplace VOTRE_MOT_DE_PASSE_ICI par le mot de passe réel de admin@famiformation.com
+
+6. Lance le script de test :
+   php test_envoi_mail_smtp.php
+
+Si tu as une erreur liée à l'envoi, vérifie :
+- Le mot de passe
+- Que l'adresse admin@famiformation.com est bien active sur IONOS
+- Que le port 465 et le chiffrement SMTPS sont autorisés sur ton hébergement
+
+En cas de souci, donne-moi le message d'erreur affiché !
