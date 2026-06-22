@@ -16,7 +16,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 RUN a2enmod rewrite
 
 # Un seul MPM Apache actif : prefork uniquement (evite "More than one MPM loaded")
-RUN a2dismod mpm_event mpm_worker 2>/dev/null; a2enmod mpm_prefork
+RUN rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf && a2enmod mpm_prefork
 
 # Copie le contenu de public/ dans la racine web d'Apache
 COPY public/ /var/www/html/
