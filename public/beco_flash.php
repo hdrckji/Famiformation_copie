@@ -31,5 +31,6 @@ verifierConnexion($db);
 <div class="quiz-action-container">
     <a href="quiz_engine.php?theme=quiz_vente_flash" class="btn-quiz">📝 Commencer le Quiz Vente Flash</a>
 </div>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

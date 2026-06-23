@@ -45,5 +45,6 @@ verifierConnexion($db);
         <iframe class="pdf-frame" src="charte.pdf"></iframe>
     </div>
     <a href="animalerie.php" class="back-link">← Retour animalerie</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

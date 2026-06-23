@@ -51,5 +51,6 @@ if ($_SESSION['role'] !== 'admin' && $_SESSION['role'] !== 'employe_logistique')
         <iframe class="pdf-frame" src="empileuse.pdf"></iframe>
     </div>
     <a href="logistique.php" class="back-link">← Retour logistique</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

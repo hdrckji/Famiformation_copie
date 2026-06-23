@@ -44,5 +44,6 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'mentor') {
     }
     </style>
 </div>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

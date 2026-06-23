@@ -51,5 +51,6 @@
     </div>
     <iframe class="pdf-frame" src="lollyland.pdf"></iframe>
     <a href="food.php" class="back-link">← Retour à Food</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

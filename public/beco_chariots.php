@@ -33,5 +33,6 @@ verifierConnexion($db);
 <div class="quiz-action-container">
     <a href="quiz_engine.php?theme=quiz_chariots" class="btn-quiz">📝 Commencer le Quiz Chariots</a>
 </div>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

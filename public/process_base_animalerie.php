@@ -51,5 +51,6 @@
     </div>
     <iframe class="pdf-frame" src="processanimalerie.pdf"></iframe>
     <a href="animalerie.php" class="back-link">← Retour à l'animalerie</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

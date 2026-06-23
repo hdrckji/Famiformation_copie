@@ -67,5 +67,6 @@
     <iframe class="pdf-frame" src="rongeur.pdf"></iframe>
     <a href="quiz_engine.php?theme=quiz_rongeur" class="quiz-link">Lancer le quizz Rongeur</a>
     <a href="animalerie.php" class="back-link">← Retour à l'animalerie</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

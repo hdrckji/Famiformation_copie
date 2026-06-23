@@ -100,5 +100,6 @@ verifierConnexion($db);
         <a href="quiz_engine.php?theme=quiz_fleurs_artificielles_pdf" class="btn btn-quiz">Lancer le quizz Fleurs Artificielles (PDF)</a>
         <a href="fleurs-artificielles-menu.php" class="btn btn-back">&#8592; Retour raccourcis</a>
     </div>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

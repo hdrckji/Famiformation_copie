@@ -44,5 +44,6 @@ if (isset($_SESSION['role']) && $_SESSION['role'] === 'mentor') {
     </style>
     <a href="quiz_engine.php?theme=quiz_feedback" class="btn-quiz">📝 Passer le Quiz de validation</a>
 </div>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

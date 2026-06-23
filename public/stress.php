@@ -51,5 +51,6 @@
     </div>
     <iframe class="pdf-frame" src="stress.pdf"></iframe>
     <a href="management.php" class="back-link">← Retour à l'espace management</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

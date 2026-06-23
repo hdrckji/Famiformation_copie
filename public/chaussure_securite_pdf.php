@@ -24,5 +24,6 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] === 'etudiant') {
         <h2>Chaussure de sécurité</h2>
         <iframe src="/chs.pdf" class="pdf-frame"></iframe>
     </div>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

@@ -106,5 +106,6 @@
         <a href="quiz_engine.php?theme=quiz_pdf" class="btn-quiz">📝 J'ai fini la lecture, passer le Quiz</a>
     </div>
 
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

@@ -51,5 +51,6 @@
     </div>
     <iframe class="pdf-frame" src="prepacommande.pdf"></iframe>
     <a href="stock.php" class="back-link">← Retour au stock</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

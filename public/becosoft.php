@@ -96,5 +96,6 @@ verifierConnexion($db);
     </a>
 </div>
 
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>

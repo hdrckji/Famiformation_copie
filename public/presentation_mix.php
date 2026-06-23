@@ -30,5 +30,6 @@ verifierConnexion($db);
         <a href="quiz_engine.php?theme=quiz_mix" class="btn-quiz" style="display:inline-block;background:#2d5a37;color:#fff;text-decoration:none;padding:16px 38px;border-radius:30px;font-weight:600;font-size:1.2rem;transition:all 0.3s;box-shadow:0 4px 12px rgba(45,90,55,0.13);margin-bottom:18px;">🎯 Quiz équipe mix</a>
     </div>
     <a href="deco.php" class="btn-back">&#8592; Retour déco</a>
+    <script src="/pdf-viewer.js" defer></script>
 </body>
 </html>
