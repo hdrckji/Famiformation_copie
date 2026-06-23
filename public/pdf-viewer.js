@@ -31,8 +31,9 @@
     var frames = findPdfFrames();
     if (!frames.length) return;
 
-    var PDFJS_VERSION = "3.11.174";
-    var CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/" + PDFJS_VERSION + "/";
+    // Build "legacy" de PDF.js : transpilée + polyfills pour les anciens
+    // navigateurs (vieux iPhone / vieux Android / Samsung Internet).
+    var CDN = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/";
 
     function loadScript(src) {
         return new Promise(function (resolve, reject) {
