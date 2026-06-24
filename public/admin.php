@@ -278,7 +278,7 @@ if ($role_filter != '') {
 }
 if ($search_nom !== '') {
     $search = $db->quote('%' . $search_nom . '%');
-    $where[] = "(u.nom LIKE $search OR u.prenom LIKE $search OR u.identifiant LIKE $search OR u.email LIKE $search)";
+    $where[] = "(u.nom LIKE $search OR u.prenom LIKE $search OR u.identifiant LIKE $search OR u.email LIKE $search OR CONCAT(u.nom, ' ', u.prenom) LIKE $search OR CONCAT(u.prenom, ' ', u.nom) LIKE $search)";
 }
 if ($agence_filter !== '') {
     $where[] = "u.interim = " . $db->quote($agence_filter);
