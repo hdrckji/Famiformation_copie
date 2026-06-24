@@ -44,6 +44,11 @@ try {
     }
 } catch (Exception $e) { /* colonne déjà présente ou indisponible */ }
 
+// Normalise les anciens "Pas d'agence" en "aucune agence" (NULL) -> évite l'option en double
+try {
+    $db->prepare("UPDATE utilisateurs SET interim = NULL WHERE interim = ?")->execute(["Pas d'agence"]);
+} catch (Exception $e) { /* ignore */ }
+
 $message = "";
 // Message "flash" survivant à une redirection (motif Post/Redirect/Get)
 if (!empty($_SESSION['admin_flash'])) {
@@ -135,7 +140,6 @@ if (isset($_POST['creer_user'])) {
     if ($nom === '')     { $manquants[] = 'Nom'; }
     if ($prenom === '')  { $manquants[] = 'Prénom'; }
     if ($email === '')   { $manquants[] = 'Email'; }
-    if ($interim === '') { $manquants[] = 'Agence intérim'; }
     if ($role === '')    { $manquants[] = 'Profil'; }
 
     if (!$hasInterimColumn) {
@@ -169,7 +173,7 @@ if (isset($_POST['creer_user'])) {
                 try {
                     $db->beginTransaction();
                     $ins = $db->prepare("INSERT INTO utilisateurs (identifiant, nom, prenom, email, interim, mot_de_passe, role, account_activation_pending, statut_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-                    $ins->execute([$id, $nom, $prenom, $email, $interim, $hash, $role, $activationPending]);
+                    $ins->execute([$id, $nom, $prenom, $email, $interim !== '' ? $interim : null, $hash, $role, $activationPending]);
                     $userId = (int) $db->lastInsertId();
 
                     $mailSent = ($mdp === '')
@@ -289,7 +293,9 @@ if ($search_nom !== '') {
     $search = $db->quote('%' . $search_nom . '%');
     $where[] = "(u.nom LIKE $search OR u.prenom LIKE $search OR u.identifiant LIKE $search OR u.email LIKE $search)";
 }
-if ($agence_filter !== '') {
+if ($agence_filter === '__none__') {
+    $where[] = "(u.interim IS NULL OR u.interim = '')";
+} elseif ($agence_filter !== '') {
     $where[] = "u.interim = " . $db->quote($agence_filter);
 }
 if ($show_inactif) {
@@ -395,9 +401,8 @@ $users = $db->query($query_str)->fetchAll();
                 <input type="text" name="new_nom" value="<?php echo htmlspecialchars($createForm['new_nom']); ?>" placeholder="Nom" required class="input-mini">
                 <input type="text" name="new_prenom" value="<?php echo htmlspecialchars($createForm['new_prenom']); ?>" placeholder="Prénom" required class="input-mini">
                 <input type="email" name="new_email" value="<?php echo htmlspecialchars($createForm['new_email']); ?>" placeholder="Email" required class="input-mini">
-                <select name="new_interim" id="new_interim" class="input-mini" required>
-                    <option value="">Sélectionner une agence intérim</option>
-                    <option value="Pas d'agence" <?php if ($createForm['new_interim'] === "Pas d'agence") echo 'selected'; ?>>Pas d'agence</option>
+                <select name="new_interim" id="new_interim" class="input-mini">
+                    <option value="" <?php if ($createForm['new_interim'] === '') echo 'selected'; ?>>Aucune agence</option>
                     <?php foreach ($agencesInterim as $agenceNom): ?>
                         <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if ($createForm['new_interim'] === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                     <?php endforeach; ?>
@@ -443,7 +448,7 @@ $users = $db->query($query_str)->fetchAll();
                     <div style="flex:1; display:flex; align-items:center; justify-content:center;">
                         <select id="filter_agence" name="filter_agence" class="filter-select" style="height:32px; min-width:120px; font-size:1em; margin-right:18px;" onchange="document.getElementById('filterForm').submit()">
                             <option value="">Toutes les agences</option>
-                            <option value="Pas d'agence" <?php if($agence_filter === "Pas d'agence") echo 'selected'; ?>>Pas d'agence</option>
+                            <option value="__none__" <?php if($agence_filter === '__none__') echo 'selected'; ?>>Aucune agence</option>
                             <?php foreach ($agencesInterim as $agenceNom): ?>
                                 <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if($agence_filter === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                             <?php endforeach; ?>
