@@ -36,6 +36,36 @@ try {
 }
 
 $message = "";
+// Message "flash" survivant à une redirection (motif Post/Redirect/Get)
+if (!empty($_SESSION['admin_flash'])) {
+    $message = $_SESSION['admin_flash'];
+    unset($_SESSION['admin_flash']);
+}
+
+// Valeurs réaffichées dans le formulaire de création (en cas d'erreur ou de confirmation)
+$createForm = [
+    'new_username' => '', 'new_nom' => '', 'new_prenom' => '',
+    'new_email' => '', 'new_interim' => '', 'new_role' => 'etudiant',
+];
+$showDuplicateModal = false;
+
+// Querystring des filtres mémorisés -> permet de revenir à la même vue après une action
+function adminFilterQuery() {
+    $f = $_SESSION['admin_filters'] ?? [];
+    $params = [];
+    foreach (['filter_role', 'filter_agence', 'search_nom'] as $k) {
+        if (!empty($f[$k])) { $params[$k] = $f[$k]; }
+    }
+    if (!empty($f['show_inactif'])) { $params['show_inactif'] = '1'; }
+    return $params ? ('?' . http_build_query($params)) : '';
+}
+
+// Redirige vers la liste en conservant le filtre courant (et un message flash optionnel)
+function adminRedirect($flash = null) {
+    if ($flash !== null) { $_SESSION['admin_flash'] = $flash; }
+    header('Location: admin.php' . adminFilterQuery());
+    exit();
+}
 
 // Suppression d'utilisateur (GET)
 if (isset($_GET['delete'])) {
@@ -47,11 +77,9 @@ if (isset($_GET['delete'])) {
     $stmt = $db->prepare("DELETE FROM utilisateurs WHERE id = ? AND identifiant != 'admin'");
     $stmt->execute([$uid]);
     $deleted = $stmt->rowCount();
-    if ($deleted > 0) {
-        $message = "<div class='alert success'>✅ Utilisateur supprimé avec succès.</div>";
-    } else {
-        $message = "<div class='alert error'>❌ Échec de la suppression (utilisateur introuvable ou admin principal protégé).</div>";
-    }
+    adminRedirect($deleted > 0
+        ? "<div class='alert success'>✅ Utilisateur supprimé avec succès.</div>"
+        : "<div class='alert error'>❌ Échec de la suppression (utilisateur introuvable ou admin principal protégé).</div>");
 }
 
 // Création de l'utilisateur spécial "Accueil" avec le rôle 'evaluateur' si non existant
@@ -74,74 +102,86 @@ try {
 
 // 1. GESTION DES ACTIONS
 if (isset($_POST['creer_user'])) {
-    // Validation CSRF
     requireValidCSRF();
-    
-    $id = trim($_POST['new_username'] ?? '');
-    $nom = trim($_POST['new_nom'] ?? '');
-    $prenom = trim($_POST['new_prenom'] ?? '');
-    $email = trim($_POST['new_email'] ?? '');
+
+    $id      = trim($_POST['new_username'] ?? '');
+    $nom     = trim($_POST['new_nom'] ?? '');
+    $prenom  = trim($_POST['new_prenom'] ?? '');
+    $email   = trim($_POST['new_email'] ?? '');
     $interim = trim($_POST['new_interim'] ?? '');
-    $mdp = $_POST['new_password'] ?? '';
-    $role = $_POST['new_role'] ?? '';
+    $mdp     = $_POST['new_password'] ?? '';
+    $role    = $_POST['new_role'] ?? '';
+    $confirmDuplicate = (($_POST['confirm_duplicate'] ?? '') === '1');
 
-    if ($role === 'etudiant' && $interim === '') {
-        $message = "<div class='alert error'>❌ Le champ Intérim est obligatoire pour un profil étudiant.</div>";
-    } elseif (!$hasInterimColumn) {
+    // Conserver les valeurs saisies pour les réafficher
+    $createForm = [
+        'new_username' => $id, 'new_nom' => $nom, 'new_prenom' => $prenom,
+        'new_email' => $email, 'new_interim' => $interim,
+        'new_role' => $role !== '' ? $role : 'etudiant',
+    ];
+
+    // Tous les champs sont obligatoires SAUF le mot de passe
+    $manquants = [];
+    if ($id === '')      { $manquants[] = 'Identifiant'; }
+    if ($nom === '')     { $manquants[] = 'Nom'; }
+    if ($prenom === '')  { $manquants[] = 'Prénom'; }
+    if ($email === '')   { $manquants[] = 'Email'; }
+    if ($interim === '') { $manquants[] = 'Agence intérim'; }
+    if ($role === '')    { $manquants[] = 'Profil'; }
+
+    if (!$hasInterimColumn) {
         $message = "<div class='alert error'>❌ La colonne Intérim n'est pas disponible en base de données.</div>";
-    } elseif (empty($id)) {
-        $message = "<div class='alert error'>❌ L'identifiant est obligatoire.</div>";
-    } elseif ($mdp === '' && $email === '') {
-        $message = "<div class='alert error'>❌ Si le mot de passe est vide, une adresse email est obligatoire pour envoyer le lien d'activation.</div>";
+    } elseif (!empty($manquants)) {
+        $message = "<div class='alert error'>❌ Tous les champs sont obligatoires (sauf le mot de passe). Manquant(s) : " . e(implode(', ', $manquants)) . ".</div>";
     } else {
-        $hash = $mdp !== ''
-            ? password_hash($mdp, PASSWORD_DEFAULT)
-            : password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
-        try {
-            $stmt = $db->prepare("INSERT INTO utilisateurs (identifiant, nom, prenom, email, interim, mot_de_passe, role, account_activation_pending) VALUES (:id, :nom, :prenom, :email, :interim, :pass, :role, :activation_pending)");
-            $stmt->execute([
-                'id' => $id,
-                'nom' => $nom,
-                'prenom' => $prenom,
-                'email' => $email !== '' ? $email : null,
-                'interim' => $interim !== '' ? $interim : null,
-                'pass' => $hash,
-                'role' => $role,
-                'activation_pending' => ($mdp === '' && $email !== '') ? 1 : 0,
-            ]);
-            $userId = (int) $db->lastInsertId();
-            $message = "<div class='alert success'>✅ Collaborateur créé avec succès.</div>";
-
-            if ($role === 'etudiant' && $email !== '') {
-                $passwordSetupUrl = null;
-                if ($mdp === '') {
-                    $activationToken = issueUserAccountAccessToken($db, $userId, 'activation', 72);
-                    $passwordSetupUrl = famiBuildAppUrl('set_password.php', ['token' => $activationToken]);
-                }
-
-                $welcomeMailSent = sendStudentWelcomeEmail($email, $id, $passwordSetupUrl);
-                if ($welcomeMailSent) {
-                    $message = $mdp === ''
-                        ? "<div class='alert success'>✅ Collaborateur créé avec succès.<br>📨 Le mail de bienvenue étudiant avec lien de création du mot de passe a été envoyé.</div>"
-                        : "<div class='alert success'>✅ Collaborateur créé avec succès.<br>📨 Le mail de bienvenue étudiant a été envoyé.</div>";
-                } else {
-                    $mailError = trim((string) getLastMailError());
-                    $details = $mailError !== '' ? '<br><small>Détail SMTP : ' . e($mailError) . '</small>' : '';
-                    $message = $mdp === ''
-                        ? "<div class='alert warning'>⚠️ Collaborateur créé, mais <strong>en attente d'activation</strong> : le mail avec le lien de création du mot de passe n'a pas pu être envoyé. Le compte ne pourra pas se connecter tant que la procédure n'est pas terminée.{$details}</div>"
-                        : "<div class='alert warning'>⚠️ Collaborateur créé, mais <strong>le mail de bienvenue étudiant n'a pas pu être envoyé.</strong>{$details}</div>";
-                }
-            } elseif ($mdp === '' && $email !== '') {
-                $activationMailSent = sendAccountActivationEmail($db, $userId);
-                if ($activationMailSent) {
-                    $message = "<div class='alert success'>✅ Collaborateur créé avec succès.<br>📨 Un mail d'activation a été envoyé.</div>";
-                } else {
-                    $mailError = trim((string) getLastMailError());
-                    $details = $mailError !== '' ? '<br><small>Détail SMTP : ' . e($mailError) . '</small>' : '';
-                    $message = "<div class='alert warning'>⚠️ Collaborateur créé, mais <strong>en attente d'activation</strong> : le mail d'activation n'a pas pu être envoyé. Le compte ne pourra pas se connecter tant que la procédure n'est pas terminée.{$details}</div>";
+        // L'identifiant doit être unique
+        $checkId = $db->prepare("SELECT COUNT(*) FROM utilisateurs WHERE identifiant = ?");
+        $checkId->execute([$id]);
+        if ((int) $checkId->fetchColumn() > 0) {
+            $message = "<div class='alert error'>❌ Cet identifiant est déjà utilisé. Choisissez-en un autre.</div>";
+        } else {
+            // Avertissement (modale) si l'email OU le couple nom + prénom existe déjà
+            if (!$confirmDuplicate) {
+                $checkDup = $db->prepare("SELECT COUNT(*) FROM utilisateurs WHERE email = ? OR (LOWER(nom) = LOWER(?) AND LOWER(prenom) = LOWER(?))");
+                $checkDup->execute([$email, $nom, $prenom]);
+                if ((int) $checkDup->fetchColumn() > 0) {
+                    $showDuplicateModal = true;
                 }
             }
-        } catch (Exception $e) { $message = "<div class='alert error'>❌ Erreur : Identifiant déjà utilisé.</div>"; }
+
+            if (!$showDuplicateModal) {
+                // Le compte n'est réellement créé QUE si le mail part correctement
+                ensureUserAccountAccessColumns($db); // hors transaction (évite un ALTER pendant la transaction)
+                $hash = $mdp !== ''
+                    ? password_hash($mdp, PASSWORD_DEFAULT)
+                    : password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
+                $activationPending = ($mdp === '') ? 1 : 0;
+
+                try {
+                    $db->beginTransaction();
+                    $ins = $db->prepare("INSERT INTO utilisateurs (identifiant, nom, prenom, email, interim, mot_de_passe, role, account_activation_pending) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $ins->execute([$id, $nom, $prenom, $email, $interim, $hash, $role, $activationPending]);
+                    $userId = (int) $db->lastInsertId();
+
+                    $mailSent = ($mdp === '')
+                        ? sendAccountActivationEmail($db, $userId)
+                        : sendStudentWelcomeEmail($email, $id, null);
+
+                    if ($mailSent) {
+                        $db->commit();
+                        adminRedirect("<div class='alert success'>✅ Collaborateur créé. 📨 Le mail a bien été envoyé à " . e($email) . ".</div>");
+                    } else {
+                        $db->rollBack();
+                        $mailError = trim((string) getLastMailError());
+                        $details = $mailError !== '' ? '<br><small>Détail technique : ' . e($mailError) . '</small>' : '';
+                        $message = "<div class='alert error'>❌ Le mail n'a pas pu être envoyé : le compte n'a donc <strong>pas été créé</strong>. Réessayez plus tard ou contactez le service IT.{$details}</div>";
+                    }
+                } catch (Exception $e) {
+                    if ($db->inTransaction()) { $db->rollBack(); }
+                    $message = "<div class='alert error'>❌ Erreur lors de la création du compte : " . e($e->getMessage()) . "</div>";
+                }
+            }
+        }
     }
 }
 
@@ -152,20 +192,18 @@ if (isset($_POST['update_user'])) {
     $nouveau_mdp = $_POST['nouveau_mdp'] ?? '';
     $nouveau_interim = trim($_POST['nouveau_interim'] ?? '');
     if ($nouveau_role === 'etudiant' && $nouveau_interim === '') {
-        $message = "<div class='alert error'>❌ Le champ Intérim est obligatoire pour un profil étudiant.</div>";
+        adminRedirect("<div class='alert error'>❌ Le champ Intérim est obligatoire pour un profil étudiant.</div>");
     } elseif (!$hasInterimColumn) {
-        $message = "<div class='alert error'>❌ La colonne Intérim n'est pas disponible en base de données.</div>";
+        adminRedirect("<div class='alert error'>❌ La colonne Intérim n'est pas disponible en base de données.</div>");
     } elseif (!empty($nouveau_mdp)) {
         $hash = password_hash($nouveau_mdp, PASSWORD_DEFAULT);
         $stmt = $db->prepare("UPDATE utilisateurs SET role = ?, interim = ?, mot_de_passe = ?, account_activation_pending = 0, account_access_token_hash = NULL, account_access_expires_at = NULL, account_access_type = NULL WHERE id = ?");
         $stmt->execute([$nouveau_role, $nouveau_interim !== '' ? $nouveau_interim : null, $hash, $uid]);
+        adminRedirect("<div class='alert success'>✅ Modifications enregistrées.</div>");
     } else {
         $stmt = $db->prepare("UPDATE utilisateurs SET role = ?, interim = ? WHERE id = ?");
         $stmt->execute([$nouveau_role, $nouveau_interim !== '' ? $nouveau_interim : null, $uid]);
-    }
-
-    if ($message === "") {
-        $message = "<div class='alert success'>✅ Modifications enregistrées.</div>";
+        adminRedirect("<div class='alert success'>✅ Modifications enregistrées.</div>");
     }
 }
 
@@ -175,7 +213,7 @@ if (isset($_POST['update_email']) && isset($_POST['user_id'])) {
     $nouveau_email = trim($_POST['nouveau_email'] ?? '');
     $stmt = $db->prepare("UPDATE utilisateurs SET email = ? WHERE id = ?");
     $stmt->execute([$nouveau_email, $uid]);
-    $message = "<div class='alert success'>✅ Email modifié.</div>";
+    adminRedirect("<div class='alert success'>✅ Email modifié.</div>");
 }
 
 if (isset($_POST['set_inactif']) && isset($_POST['user_id'])) {
@@ -183,18 +221,19 @@ if (isset($_POST['set_inactif']) && isset($_POST['user_id'])) {
     $uid = intval($_POST['user_id']);
     $stmt = $db->prepare("UPDATE utilisateurs SET statut = 'inactif' WHERE id = ?");
     $stmt->execute([$uid]);
-    $message = "<div class='alert success'>✅ Utilisateur passé en inactif.</div>";
+    adminRedirect("<div class='alert success'>✅ Utilisateur passé en inactif.</div>");
 }
 if (isset($_POST['set_actif']) && isset($_POST['user_id'])) {
     requireValidCSRF();
     $uid = intval($_POST['user_id']);
     $stmt = $db->prepare("UPDATE utilisateurs SET statut = NULL WHERE id = ?");
     $stmt->execute([$uid]);
-    $message = "<div class='alert success'>✅ Utilisateur réactivé.</div>";
+    adminRedirect("<div class='alert success'>✅ Utilisateur réactivé.</div>");
 }
 
 // 2. RÉCUPÉRATION DES DONNÉES AVEC FILTRE
 $role_filter = isset($_GET['filter_role']) ? $_GET['filter_role'] : '';
+$agence_filter = isset($_GET['filter_agence']) ? trim($_GET['filter_agence']) : '';
 $search_nom = trim($_GET['search_nom'] ?? '');
 
 // Récupérer dynamiquement tous les thèmes de quiz
@@ -217,7 +256,15 @@ $query_str = "SELECT u.*,
 
 $show_inactif = isset($_GET['show_inactif']) ? ($_GET['show_inactif'] === '1') : false;
 
-$query_str = "SELECT u.*, 
+// Mémorise la vue courante pour y revenir après une action (suppression, modif...)
+$_SESSION['admin_filters'] = [
+    'filter_role'   => $role_filter,
+    'filter_agence' => $agence_filter,
+    'search_nom'    => $search_nom,
+    'show_inactif'  => $show_inactif ? 1 : 0,
+];
+
+$query_str = "SELECT u.*,
       (SELECT COUNT(DISTINCT nom_page) 
        FROM statistiques 
        WHERE utilisateur_id = u.id 
@@ -230,8 +277,11 @@ if ($role_filter != '') {
     $where[] = "u.role = " . $db->quote($role_filter);
 }
 if ($search_nom !== '') {
-    $search = '%' . $search_nom . '%';
-    $where[] = "(u.nom LIKE " . $db->quote($search) . " OR u.prenom LIKE " . $db->quote($search) . ")";
+    $search = $db->quote('%' . $search_nom . '%');
+    $where[] = "(u.nom LIKE $search OR u.prenom LIKE $search OR u.identifiant LIKE $search OR u.email LIKE $search)";
+}
+if ($agence_filter !== '') {
+    $where[] = "u.interim = " . $db->quote($agence_filter);
 }
 if ($show_inactif) {
     $where[] = "u.statut = 'inactif'";
@@ -293,6 +343,10 @@ $users = $db->query($query_str)->fetchAll();
         .status-active { background: #e8f5e9; color: #2d5a37; }
         .status-inactive { background: #f9e1e1; color: #a83232; }
         .status-pending { background: #fff3cd; color: #856404; }
+        .modal-backdrop { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+        .modal-card { background: #fff; border-radius: 14px; padding: 28px; max-width: 460px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .btn-cancel { background: #e9ecef; color: #333; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        .btn-cancel:hover { background: #dde1e5; }
         .action-stack { display: flex; flex-direction: column; align-items: stretch; gap: 8px; min-width: 130px; }
         .action-stack form,
         .action-stack a { margin: 0; }
@@ -323,31 +377,46 @@ $users = $db->query($query_str)->fetchAll();
     <div class="card">
         <div class="card-header" style="font-size:1.35rem;">Ajouter un nouveau collaborateur</div>
         <div class="card-body">
-            <form method="POST" id="createUserForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+            <form method="POST" action="admin.php" id="createUserForm" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
                 <?php echo csrfField(); ?>
-                <input type="text" name="new_username" placeholder="Identifiant" required class="input-mini">
-                <input type="text" name="new_nom" placeholder="Nom" required class="input-mini">
-                <input type="text" name="new_prenom" placeholder="Prénom" required class="input-mini">
-                <input type="email" name="new_email" placeholder="Email (optionnel)" class="input-mini">
-                <select name="new_interim" id="new_interim" class="input-mini">
+                <input type="hidden" id="confirm_duplicate" name="confirm_duplicate" value="">
+                <input type="text" name="new_username" value="<?php echo htmlspecialchars($createForm['new_username']); ?>" placeholder="Identifiant" required class="input-mini">
+                <input type="text" name="new_nom" value="<?php echo htmlspecialchars($createForm['new_nom']); ?>" placeholder="Nom" required class="input-mini">
+                <input type="text" name="new_prenom" value="<?php echo htmlspecialchars($createForm['new_prenom']); ?>" placeholder="Prénom" required class="input-mini">
+                <input type="email" name="new_email" value="<?php echo htmlspecialchars($createForm['new_email']); ?>" placeholder="Email" required class="input-mini">
+                <select name="new_interim" id="new_interim" class="input-mini" required>
                     <option value="">Sélectionner une agence intérim</option>
+                    <option value="Pas d'agence" <?php if ($createForm['new_interim'] === "Pas d'agence") echo 'selected'; ?>>Pas d'agence</option>
                     <?php foreach ($agencesInterim as $agenceNom): ?>
-                        <option value="<?php echo htmlspecialchars($agenceNom); ?>"><?php echo htmlspecialchars($agenceNom); ?></option>
+                        <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if ($createForm['new_interim'] === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                     <?php endforeach; ?>
                 </select>
-                <input type="password" name="new_password" placeholder="Mot de passe (laisser vide pour activer par email)" class="input-mini">
-                <select name="new_role" id="new_role" class="input-mini">
-                    <option value="etudiant">Étudiant</option>
-                    <option value="employe_magasin">Magasin</option>
-                    <option value="teamcoach">Teamcoach</option>
-                    <option value="mentor">Mentor</option>
-                    <option value="employe_logistique">Logistique</option>
-                    <option value="admin">Admin</option>
-                    <option value="evaluateur">Évaluateur</option>
+                <input type="password" name="new_password" placeholder="Mot de passe (optionnel)" class="input-mini">
+                <select name="new_role" id="new_role" class="input-mini" required>
+                    <option value="etudiant" <?php if ($createForm['new_role'] === 'etudiant') echo 'selected'; ?>>Étudiant</option>
+                    <option value="employe_magasin" <?php if ($createForm['new_role'] === 'employe_magasin') echo 'selected'; ?>>Magasin</option>
+                    <option value="teamcoach" <?php if ($createForm['new_role'] === 'teamcoach') echo 'selected'; ?>>Teamcoach</option>
+                    <option value="mentor" <?php if ($createForm['new_role'] === 'mentor') echo 'selected'; ?>>Mentor</option>
+                    <option value="employe_logistique" <?php if ($createForm['new_role'] === 'employe_logistique') echo 'selected'; ?>>Logistique</option>
+                    <option value="admin" <?php if ($createForm['new_role'] === 'admin') echo 'selected'; ?>>Admin</option>
+                    <option value="evaluateur" <?php if ($createForm['new_role'] === 'evaluateur') echo 'selected'; ?>>Évaluateur</option>
                 </select>
                 <button type="submit" name="creer_user" class="btn-save" style="height: 40px;">Créer le compte</button>
             </form>
-            <div class="hint">Le champ Intérim est obligatoire uniquement pour les profils Étudiant. Si le mot de passe est laissé vide et qu'un email est renseigné, un mail d'activation part automatiquement. La liste des agences vient de la page Agences Intérim.</div>
+            <div class="hint">Tous les champs sont obligatoires sauf le mot de passe. Si le mot de passe est laissé vide, un mail d'activation est envoyé et le compte n'est créé que si ce mail part correctement. La liste des agences vient de la page Agences Intérim.</div>
+        </div>
+    </div>
+
+    <!-- Modale : collaborateur potentiellement déjà existant -->
+    <div id="dupModal" class="modal-backdrop"<?php if (!$showDuplicateModal) echo ' style="display:none;"'; ?>>
+        <div class="modal-card">
+            <h3 style="margin-top:0; color:#856404;">⚠️ Collaborateur déjà existant ?</h3>
+            <p style="line-height:1.6;">Un collaborateur avec le <strong>même email</strong> ou le <strong>même nom et prénom</strong> existe déjà dans la base.</p>
+            <p style="line-height:1.6;">Voulez-vous quand même l'ajouter ?</p>
+            <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:22px;">
+                <button type="button" class="btn-cancel" onclick="document.getElementById('dupModal').style.display='none';">Annuler</button>
+                <button type="button" class="btn-save" onclick="document.getElementById('confirm_duplicate').value='1'; document.getElementById('createUserForm').submit();">Confirmer l'ajout</button>
+            </div>
         </div>
     </div>
 
@@ -357,12 +426,21 @@ $users = $db->query($query_str)->fetchAll();
             <div style="background:#2d5a37; padding:4px 8px; border-radius:8px; margin-bottom:14px; display:flex; align-items:center; gap:0; height:28px; min-height:28px; max-height:28px;">
                 <form method="GET" id="filterForm" style="display:flex; flex:1; align-items:center; gap:0; width:100%;">
                     <div style="flex:2; display:flex; align-items:center;">
-                        <input id="search_nom" type="text" name="search_nom" value="<?php echo htmlspecialchars($_GET['search_nom'] ?? ''); ?>" placeholder="Recherche nom ou prénom..." class="input-mini" style="height:36px; width:220px; margin-right:18px; border:1px solid #ccc; font-size:1em;" />
+                        <input id="search_nom" type="text" name="search_nom" value="<?php echo htmlspecialchars($_GET['search_nom'] ?? ''); ?>" placeholder="Rechercher un collaborateur..." class="input-mini" style="height:36px; width:220px; margin-right:18px; border:1px solid #ccc; font-size:1em;" />
                         <button type="submit" class="btn-save" style="height:32px; min-width:32px; font-size:1.1em; padding:0 8px; margin-right:18px;">🔍</button>
                     </div>
                     <div style="flex:1; display:flex; align-items:center; justify-content:center;">
+                        <select id="filter_agence" name="filter_agence" class="filter-select" style="height:32px; min-width:120px; font-size:1em; margin-right:18px;" onchange="document.getElementById('filterForm').submit()">
+                            <option value="">Toutes les agences</option>
+                            <option value="Pas d'agence" <?php if($agence_filter === "Pas d'agence") echo 'selected'; ?>>Pas d'agence</option>
+                            <?php foreach ($agencesInterim as $agenceNom): ?>
+                                <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if($agence_filter === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div style="flex:1; display:flex; align-items:center; justify-content:center;">
                         <select id="filter_role" name="filter_role" class="filter-select" style="height:32px; min-width:120px; font-size:1em; margin-right:18px;" onchange="document.getElementById('filterForm').submit()">
-                            <option value="">Tous les rôles</option>
+                            <option value="">Tous les profils</option>
                             <option value="etudiant" <?php if($role_filter == 'etudiant') echo 'selected'; ?>>Étudiant</option>
                             <option value="employe_magasin" <?php if($role_filter == 'employe_magasin') echo 'selected'; ?>>Magasin</option>
                             <option value="teamcoach" <?php if($role_filter == 'teamcoach') echo 'selected'; ?>>Teamcoach</option>
