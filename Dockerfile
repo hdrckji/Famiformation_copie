@@ -1,4 +1,4 @@
-FROM dunglas/frankenphp:1-php8.2
+FROM dunglas/frankenphp:1-php8.3
 
 # Extensions PHP requises par le site (gd pour phpspreadsheet, zip, MySQL)
 RUN install-php-extensions gd zip pdo_mysql mysqli
