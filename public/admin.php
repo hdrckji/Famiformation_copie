@@ -35,6 +35,15 @@ try {
     $agencesInterim = [];
 }
 
+// Colonne "date de statut" : créée si absente (renseigne la date du dernier changement d'état)
+try {
+    $colStatutDate = $db->query("SHOW COLUMNS FROM utilisateurs LIKE 'statut_date'");
+    if (!$colStatutDate->fetch()) {
+        $db->exec("ALTER TABLE utilisateurs ADD COLUMN statut_date DATETIME NULL");
+        $db->exec("UPDATE utilisateurs SET statut_date = COALESCE(derniere_visite, NOW()) WHERE statut_date IS NULL");
+    }
+} catch (Exception $e) { /* colonne déjà présente ou indisponible */ }
+
 $message = "";
 // Message "flash" survivant à une redirection (motif Post/Redirect/Get)
 if (!empty($_SESSION['admin_flash'])) {
@@ -159,7 +168,7 @@ if (isset($_POST['creer_user'])) {
 
                 try {
                     $db->beginTransaction();
-                    $ins = $db->prepare("INSERT INTO utilisateurs (identifiant, nom, prenom, email, interim, mot_de_passe, role, account_activation_pending) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $ins = $db->prepare("INSERT INTO utilisateurs (identifiant, nom, prenom, email, interim, mot_de_passe, role, account_activation_pending, statut_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
                     $ins->execute([$id, $nom, $prenom, $email, $interim, $hash, $role, $activationPending]);
                     $userId = (int) $db->lastInsertId();
 
@@ -197,7 +206,7 @@ if (isset($_POST['update_user'])) {
         adminRedirect("<div class='alert error'>❌ La colonne Intérim n'est pas disponible en base de données.</div>");
     } elseif (!empty($nouveau_mdp)) {
         $hash = password_hash($nouveau_mdp, PASSWORD_DEFAULT);
-        $stmt = $db->prepare("UPDATE utilisateurs SET role = ?, interim = ?, mot_de_passe = ?, account_activation_pending = 0, account_access_token_hash = NULL, account_access_expires_at = NULL, account_access_type = NULL WHERE id = ?");
+        $stmt = $db->prepare("UPDATE utilisateurs SET role = ?, interim = ?, mot_de_passe = ?, account_activation_pending = 0, account_access_token_hash = NULL, account_access_expires_at = NULL, account_access_type = NULL, statut_date = NOW() WHERE id = ?");
         $stmt->execute([$nouveau_role, $nouveau_interim !== '' ? $nouveau_interim : null, $hash, $uid]);
         adminRedirect("<div class='alert success'>✅ Modifications enregistrées.</div>");
     } else {
@@ -219,14 +228,14 @@ if (isset($_POST['update_email']) && isset($_POST['user_id'])) {
 if (isset($_POST['set_inactif']) && isset($_POST['user_id'])) {
     requireValidCSRF();
     $uid = intval($_POST['user_id']);
-    $stmt = $db->prepare("UPDATE utilisateurs SET statut = 'inactif' WHERE id = ?");
+    $stmt = $db->prepare("UPDATE utilisateurs SET statut = 'inactif', statut_date = NOW() WHERE id = ?");
     $stmt->execute([$uid]);
     adminRedirect("<div class='alert success'>✅ Utilisateur passé en inactif.</div>");
 }
 if (isset($_POST['set_actif']) && isset($_POST['user_id'])) {
     requireValidCSRF();
     $uid = intval($_POST['user_id']);
-    $stmt = $db->prepare("UPDATE utilisateurs SET statut = NULL WHERE id = ?");
+    $stmt = $db->prepare("UPDATE utilisateurs SET statut = NULL, statut_date = NOW() WHERE id = ?");
     $stmt->execute([$uid]);
     adminRedirect("<div class='alert success'>✅ Utilisateur réactivé.</div>");
 }
@@ -472,6 +481,7 @@ $users = $db->query($query_str)->fetchAll();
                         <th class="col-quiz">Quiz</th>
                         <th class="col-role">Profil</th>
                         <th class="col-status">Statut</th>
+                        <th class="col-status-date">Date statut</th>
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
@@ -540,6 +550,25 @@ $users = $db->query($query_str)->fetchAll();
                             <?php else: ?>
                                 <span class="status-badge status-active">Actif</span>
                             <?php endif; ?>
+                        </td>
+                        <td class="status-date-cell">
+                            <?php
+                                $statutDate = $u['statut_date'] ?? null;
+                                $tsStatut = $statutDate ? strtotime((string) $statutDate) : false;
+                                if ($tsStatut) {
+                                    if (($u['statut'] ?? '') === 'inactif') {
+                                        $libelleDate = 'Désactivé le';
+                                    } elseif (!empty($u['account_activation_pending'])) {
+                                        $libelleDate = 'Créé le';
+                                    } else {
+                                        $libelleDate = 'Activé le';
+                                    }
+                                    echo '<span class="cell-note">' . $libelleDate . '</span>';
+                                    echo '<div>' . htmlspecialchars(date('d/m/Y H:i', $tsStatut)) . '</div>';
+                                } else {
+                                    echo '<span class="muted-code">—</span>';
+                                }
+                            ?>
                         </td>
                         <td>
                             <?php if ($u['identifiant'] !== 'admin'): ?>

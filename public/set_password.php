@@ -3,6 +3,14 @@ require_once 'config.php';
 
 ensureUserAccountAccessColumns($db);
 
+// Colonne "date de statut" : créée si absente
+try {
+    $colStatutDate = $db->query("SHOW COLUMNS FROM utilisateurs LIKE 'statut_date'");
+    if (!$colStatutDate->fetch()) {
+        $db->exec("ALTER TABLE utilisateurs ADD COLUMN statut_date DATETIME NULL");
+    }
+} catch (Exception $e) { /* colonne déjà présente ou indisponible */ }
+
 $token = trim((string) ($_GET['token'] ?? $_POST['token'] ?? ''));
 $user = $token !== '' ? findUserByAccountAccessToken($db, $token) : null;
 $message = '';
@@ -29,7 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  account_activation_pending = 0,
                  account_access_token_hash = NULL,
                  account_access_expires_at = NULL,
-                 account_access_type = NULL
+                 account_access_type = NULL,
+                 statut_date = NOW()
              WHERE id = ?"
         );
         $stmt->execute([$hash, (int) $user['id']]);
