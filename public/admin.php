@@ -140,6 +140,7 @@ if (isset($_POST['creer_user'])) {
     if ($nom === '')     { $manquants[] = 'Nom'; }
     if ($prenom === '')  { $manquants[] = 'Prénom'; }
     if ($email === '')   { $manquants[] = 'Email'; }
+    if ($interim === '') { $manquants[] = 'Agence intérim'; }
     if ($role === '')    { $manquants[] = 'Profil'; }
 
     if (!$hasInterimColumn) {
@@ -173,7 +174,8 @@ if (isset($_POST['creer_user'])) {
                 try {
                     $db->beginTransaction();
                     $ins = $db->prepare("INSERT INTO utilisateurs (identifiant, nom, prenom, email, interim, mot_de_passe, role, account_activation_pending, statut_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-                    $ins->execute([$id, $nom, $prenom, $email, $interim !== '' ? $interim : null, $hash, $role, $activationPending]);
+                    $interimStore = ($interim === '' || $interim === '__none__') ? null : $interim;
+                    $ins->execute([$id, $nom, $prenom, $email, $interimStore, $hash, $role, $activationPending]);
                     $userId = (int) $db->lastInsertId();
 
                     $mailSent = ($mdp === '')
@@ -204,18 +206,18 @@ if (isset($_POST['update_user'])) {
     $nouveau_role = $_POST['nouveau_role'] ?? '';
     $nouveau_mdp = $_POST['nouveau_mdp'] ?? '';
     $nouveau_interim = trim($_POST['nouveau_interim'] ?? '');
-    if ($nouveau_role === 'etudiant' && $nouveau_interim === '') {
-        adminRedirect("<div class='alert error'>❌ Le champ Intérim est obligatoire pour un profil étudiant.</div>");
-    } elseif (!$hasInterimColumn) {
+    // "Aucune agence" (__none__) ou vide -> NULL en base
+    $interimVal = ($nouveau_interim === '' || $nouveau_interim === '__none__') ? null : $nouveau_interim;
+    if (!$hasInterimColumn) {
         adminRedirect("<div class='alert error'>❌ La colonne Intérim n'est pas disponible en base de données.</div>");
     } elseif (!empty($nouveau_mdp)) {
         $hash = password_hash($nouveau_mdp, PASSWORD_DEFAULT);
         $stmt = $db->prepare("UPDATE utilisateurs SET role = ?, interim = ?, mot_de_passe = ?, account_activation_pending = 0, account_access_token_hash = NULL, account_access_expires_at = NULL, account_access_type = NULL, statut_date = NOW() WHERE id = ?");
-        $stmt->execute([$nouveau_role, $nouveau_interim !== '' ? $nouveau_interim : null, $hash, $uid]);
+        $stmt->execute([$nouveau_role, $interimVal, $hash, $uid]);
         adminRedirect("<div class='alert success'>✅ Modifications enregistrées.</div>");
     } else {
         $stmt = $db->prepare("UPDATE utilisateurs SET role = ?, interim = ? WHERE id = ?");
-        $stmt->execute([$nouveau_role, $nouveau_interim !== '' ? $nouveau_interim : null, $uid]);
+        $stmt->execute([$nouveau_role, $interimVal, $uid]);
         adminRedirect("<div class='alert success'>✅ Modifications enregistrées.</div>");
     }
 }
@@ -401,8 +403,9 @@ $users = $db->query($query_str)->fetchAll();
                 <input type="text" name="new_nom" value="<?php echo htmlspecialchars($createForm['new_nom']); ?>" placeholder="Nom" required class="input-mini">
                 <input type="text" name="new_prenom" value="<?php echo htmlspecialchars($createForm['new_prenom']); ?>" placeholder="Prénom" required class="input-mini">
                 <input type="email" name="new_email" value="<?php echo htmlspecialchars($createForm['new_email']); ?>" placeholder="Email" required class="input-mini">
-                <select name="new_interim" id="new_interim" class="input-mini">
-                    <option value="" <?php if ($createForm['new_interim'] === '') echo 'selected'; ?>>Aucune agence</option>
+                <select name="new_interim" id="new_interim" class="input-mini" required>
+                    <option value="" <?php if ($createForm['new_interim'] === '') echo 'selected'; ?>>Sélectionner une agence intérim</option>
+                    <option value="__none__" <?php if ($createForm['new_interim'] === '__none__') echo 'selected'; ?>>Aucune agence</option>
                     <?php foreach ($agencesInterim as $agenceNom): ?>
                         <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if ($createForm['new_interim'] === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                     <?php endforeach; ?>
@@ -513,13 +516,13 @@ $users = $db->query($query_str)->fetchAll();
                                 <?php echo csrfField(); ?>
                                 <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
                                 <select name="nouveau_interim" class="input-mini" style="width:180px;">
-                                    <option value="">Aucune agence</option>
-                                    <?php if (!empty($u['interim']) && !in_array($u['interim'], $agencesInterim, true)): ?>
-                                        <option value="<?php echo htmlspecialchars($u['interim']); ?>" selected><?php echo htmlspecialchars($u['interim']); ?></option>
-                                    <?php endif; ?>
+                                    <option value="__none__" <?php if (empty($u['interim'])) echo 'selected'; ?>>Aucune agence</option>
                                     <?php foreach ($agencesInterim as $agenceNom): ?>
                                         <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if (($u['interim'] ?? '') === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                                     <?php endforeach; ?>
+                                    <?php if (!empty($u['interim']) && !in_array($u['interim'], $agencesInterim, true)): ?>
+                                        <option value="<?php echo htmlspecialchars($u['interim']); ?>" selected><?php echo htmlspecialchars($u['interim']); ?></option>
+                                    <?php endif; ?>
                                 </select>
                                 <input type="hidden" name="nouveau_role" value="<?php echo htmlspecialchars($u['role']); ?>">
                                 <button type="submit" name="update_user" class="btn-save" style="padding:2px 8px; font-size:0.9em;">🏢</button>
