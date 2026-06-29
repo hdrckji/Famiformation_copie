@@ -2,6 +2,7 @@
 require_once 'config.php';
 verifierConnexion($db);
 require_once 'includes/quizz_status.php';
+require_once 'includes/modules.php';
 
 $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'etudiant';
 if ($role === 'agence_interim') {
@@ -45,6 +46,16 @@ if ($role === 'etudiant') {
     $caisse_valid = hasCompletedCaisseQuizzes($user_id);
     $onboarding_unlocked = hasUnlockedOnboarding($user_id);
     $onboarding_completed = hasCompletedOnboarding($user_id);
+}
+
+// --- Modules dynamiques (créés par l'admin) ---
+$isAdmin = ($role === 'admin');
+ensureModulesTable($db);
+$dynamicModules = getModules($db, null, !$isAdmin); // l'admin voit aussi les modules inactifs
+$moduleFlash = '';
+if (!empty($_SESSION['module_flash'])) {
+    $moduleFlash = $_SESSION['module_flash'];
+    unset($_SESSION['module_flash']);
 }
 ?>
 
@@ -139,6 +150,30 @@ if ($role === 'etudiant') {
 
         .badge-new { position: absolute; top: -10px; right: -10px; background: #d93025; color: white; font-size: 0.75rem; font-weight: bold; padding: 5px 12px; border-radius: 20px; animation: pulse 2s infinite; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 10; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        .tile-inactive { opacity: 0.45; }
+        .module-flash { background: #fff8e1; border: 1px solid #ffe082; color: #6a5400; padding: 12px 20px; border-radius: 14px; font-weight: 700; margin: 8px auto 0; max-width: 600px; text-align: center; }
+
+        /* Bloc jaune "Gestion des modules" (admin, en bas à droite) */
+        .module-manager { position: fixed; bottom: 20px; right: 20px; width: 280px; background: #fff8e1; border: 2px solid #f6c945; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 14px; z-index: 1500; }
+        .module-manager-header { font-weight: 800; color: #8a6d00; margin-bottom: 10px; font-size: 1rem; }
+        .btn-mm-create { width: 100%; background: #2d5a37; color: #fff; border: none; border-radius: 10px; padding: 10px; font-weight: 700; cursor: pointer; }
+        .btn-mm-create:hover { background: #357a44; }
+        .module-manager-list { margin-top: 10px; max-height: 220px; overflow-y: auto; }
+        .mm-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 4px; border-bottom: 1px solid #f0e2b0; }
+        .mm-item a { color: #2d5a37; text-decoration: none; font-weight: 600; font-size: 0.88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mm-del { background: none; border: none; cursor: pointer; font-size: 1rem; }
+        .mm-empty { color: #8a6d00; font-size: 0.85rem; padding: 6px 4px; }
+
+        /* Modale de création de module */
+        .mm-modal-backdrop { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .mm-modal-card { background: #fff; border-radius: 14px; padding: 28px; max-width: 460px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .mm-modal-card h3 { margin-top: 0; color: #2d5a37; }
+        .mm-modal-card label { display: block; font-weight: 700; color: #244230; margin: 12px 0 4px; }
+        .mm-modal-card input[type=text], .mm-modal-card textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font: inherit; }
+        .mm-modal-card .mm-check { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .mm-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+        .btn-cancel { background: #e9ecef; color: #333; border: none; border-radius: 10px; padding: 10px 18px; font-weight: 700; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -162,6 +197,10 @@ if ($role === 'etudiant') {
     <div class="header">
         <img src="logo.png" alt="Famiflora" class="logo-main">
     </div>
+
+    <?php if (!empty($moduleFlash)): ?>
+        <div class="module-flash"><?= htmlspecialchars($moduleFlash) ?></div>
+    <?php endif; ?>
 
     <div class="tiles-container">
         <?php if ($role !== 'etudiant' || $onboarding_unlocked): ?>
@@ -292,7 +331,55 @@ if ($role === 'etudiant') {
             <div class="tile-desc">Ajouter/Modifier les quiz.</div>
         </a>
         <?php endif; ?>
+
+        <?php foreach ($dynamicModules as $mod): ?>
+        <a href="module.php?id=<?= (int) $mod['id'] ?>" class="tile<?= ((int) $mod['is_active'] !== 1) ? ' tile-inactive' : '' ?>">
+            <div class="tile-media"><span class="tile-icon"><?= moduleIcon($mod) ?></span></div>
+            <div class="tile-title"><?= htmlspecialchars($mod['nom']) ?></div>
+            <div class="tile-desc"><?= htmlspecialchars($mod['description'] ?? '') ?></div>
+        </a>
+        <?php endforeach; ?>
     </div>
+
+    <?php if ($isAdmin): ?>
+    <div class="module-manager">
+        <div class="module-manager-header">🧩 Gestion des modules</div>
+        <button type="button" class="btn-mm-create" onclick="document.getElementById('moduleCreateModal').style.display='flex';">➕ Créer un module</button>
+        <div class="module-manager-list">
+            <?php foreach ($dynamicModules as $mod): ?>
+                <div class="mm-item">
+                    <a href="module.php?id=<?= (int) $mod['id'] ?>" title="<?= htmlspecialchars($mod['nom']) ?>"><?= moduleIcon($mod) ?> <?= htmlspecialchars($mod['nom']) ?><?= ((int) $mod['is_active'] !== 1) ? ' (inactif)' : '' ?></a>
+                    <form method="POST" action="module_save.php" onsubmit="return confirm('Supprimer définitivement ce module ?');">
+                        <?= csrfField() ?>
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="id" value="<?= (int) $mod['id'] ?>">
+                        <button type="submit" class="mm-del" title="Supprimer">🗑</button>
+                    </form>
+                </div>
+            <?php endforeach; ?>
+            <?php if (empty($dynamicModules)): ?><div class="mm-empty">Aucun module créé pour l'instant.</div><?php endif; ?>
+        </div>
+    </div>
+
+    <div id="moduleCreateModal" class="mm-modal-backdrop">
+        <div class="mm-modal-card">
+            <h3>Nouveau module</h3>
+            <form method="POST" action="module_save.php">
+                <?= csrfField() ?>
+                <input type="hidden" name="action" value="create">
+                <label>Nom du module</label>
+                <input type="text" name="nom" required maxlength="150">
+                <label>Description (quelques mots)</label>
+                <textarea name="description" rows="2" maxlength="500"></textarea>
+                <label class="mm-check"><input type="checkbox" name="is_container" value="1"> Mon module contient d'autres modules</label>
+                <div class="mm-modal-actions">
+                    <button type="button" class="btn-cancel" onclick="document.getElementById('moduleCreateModal').style.display='none';">Annuler</button>
+                    <button type="submit" class="btn-mm-create">Créer le module</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <?php endif; ?>
 
 </body>
 </html>
