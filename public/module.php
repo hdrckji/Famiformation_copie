@@ -93,13 +93,29 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
             <?php endif; ?>
         </div>
     <?php else: ?>
-        <div class="content-card">
-            <?php if (!empty($module['pdf_path']) || !empty($module['video_path'])): ?>
-                <p>Le contenu de ce module s'affichera ici (PDF / vidéo). <em>Affichage du contenu à venir (étape suivante).</em></p>
+        <?php $isUni = !empty($module['uniformized']); ?>
+        <?php if (!empty($module['video_path'])): ?>
+            <div class="content-card">
+                <video controls controlsList="nodownload" style="width:100%; border-radius:12px; background:#000;">
+                    <source src="<?= htmlspecialchars($module['video_path']) ?>">
+                    <?= t('Votre navigateur ne peut pas lire cette vidéo.', 'Uw browser kan deze video niet afspelen.') ?>
+                </video>
+            </div>
+        <?php endif; ?>
+        <?php if (!empty($module['pdf_path'])): ?>
+            <?php if ($isUni): ?>
+                <div class="content-card" id="uniPdf" data-src="<?= htmlspecialchars($module['pdf_path']) ?>">
+                    <div style="text-align:center; color:#2d5a37; font-weight:700;"><?= t('Chargement du document…', 'Document laden…') ?></div>
+                </div>
             <?php else: ?>
-                <p style="text-align:center;color:#666;">Ce module n'a pas encore de contenu. <?php if ($isAdmin): ?>L'ajout de contenu (PDF / vidéo) arrive à l'étape suivante.<?php endif; ?></p>
+                <div class="content-card" style="padding:0; overflow:hidden;">
+                    <iframe src="<?= htmlspecialchars($module['pdf_path']) ?>" style="width:100%; height:80vh; border:none; border-radius:18px;"></iframe>
+                </div>
             <?php endif; ?>
-        </div>
+        <?php endif; ?>
+        <?php if (empty($module['video_path']) && empty($module['pdf_path'])): ?>
+            <div class="content-card" style="text-align:center; color:#666;"><?= t("Ce module n'a pas encore de contenu.", 'Deze module heeft nog geen inhoud.') ?></div>
+        <?php endif; ?>
     <?php endif; ?>
 
     <?php if ($isAdmin): ?>
@@ -107,6 +123,8 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
             <button type="button" class="btn btn-create" onclick="document.getElementById('editModal').style.display='flex';">✏️ Modifier ce module</button>
             <?php if ($isContainer): ?>
                 <button type="button" class="btn btn-create" onclick="document.getElementById('createModal').style.display='flex';">➕ Ajouter un sous-module</button>
+            <?php else: ?>
+                <button type="button" class="btn btn-create" onclick="document.getElementById('contentModal').style.display='flex';">📎 Gérer le contenu</button>
             <?php endif; ?>
         </div>
         <div style="color:#fff; background:rgba(0,0,0,0.3); padding:8px 14px; border-radius:10px; font-size:0.85rem; margin-top:8px;">ℹ️ La suppression se fait dans ⚙️ Paramètres → Gestion des modules.</div>
@@ -149,7 +167,86 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         </div>
         <?php endif; ?>
 
+        <?php if (!$isContainer): ?>
+        <!-- Modale : gérer le contenu (PDF / vidéo) -->
+        <div id="contentModal" class="modal-backdrop">
+            <div class="modal-card">
+                <h3>Contenu du module</h3>
+                <form method="POST" action="module_save.php" enctype="multipart/form-data" onsubmit="return confirm('Enregistrer le contenu de ce module ?');">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="content">
+                    <input type="hidden" name="id" value="<?= (int) $module['id'] ?>">
+                    <input type="hidden" name="return" value="module.php?id=<?= (int) $module['id'] ?>">
+
+                    <label>📄 PDF</label>
+                    <?php if (!empty($module['pdf_path'])): ?>
+                        <div style="margin-bottom:6px;">
+                            <a href="<?= htmlspecialchars($module['pdf_path']) ?>" download>⬇ Télécharger le PDF actuel</a>
+                            <label class="chk" style="display:inline-flex; margin-left:12px;"><input type="checkbox" name="remove_pdf" value="1"> Supprimer</label>
+                        </div>
+                    <?php endif; ?>
+                    <input type="file" name="pdf_file" accept="application/pdf">
+
+                    <label style="margin-top:16px;">🎬 Vidéo</label>
+                    <?php if (!empty($module['video_path'])): ?>
+                        <div style="margin-bottom:6px;">
+                            <a href="<?= htmlspecialchars($module['video_path']) ?>" download>⬇ Télécharger la vidéo actuelle</a>
+                            <label class="chk" style="display:inline-flex; margin-left:12px;"><input type="checkbox" name="remove_video" value="1"> Supprimer</label>
+                        </div>
+                    <?php endif; ?>
+                    <input type="file" name="video_file" accept="video/*">
+
+                    <p style="font-size:0.82rem; color:#777; margin-top:14px;">« Valider et uniformiser » affiche le PDF dans une mise en page intégrée au site (au lieu du lecteur PDF brut).</p>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-cancel" onclick="document.getElementById('contentModal').style.display='none';">Annuler</button>
+                        <button type="submit" name="uniformize" value="0" class="btn" style="background:#e9ecef; color:#333;">Valider</button>
+                        <button type="submit" name="uniformize" value="1" class="btn btn-create">Valider et uniformiser</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?= moduleFormScript() ?>
+    <?php endif; ?>
+
+    <?php if (!$isContainer && !empty($module['pdf_path'])): ?>
+        <?php if (!empty($module['uniformized'])): ?>
+        <script>
+        (function () {
+            var box = document.getElementById('uniPdf'); if (!box) { return; }
+            var url = box.getAttribute('data-src');
+            function load(s) { return new Promise(function (res, rej) { var sc = document.createElement('script'); sc.src = s; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); }); }
+            load('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js').then(function () {
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js';
+                return window.pdfjsLib.getDocument(url).promise;
+            }).then(function (pdf) {
+                box.innerHTML = '';
+                var chain = Promise.resolve();
+                for (var i = 1; i <= pdf.numPages; i++) {
+                    (function (p) {
+                        chain = chain.then(function () {
+                            return pdf.getPage(p).then(function (page) {
+                                var avail = (box.clientWidth || 800) - 32;
+                                var base = page.getViewport({ scale: 1 });
+                                var dpr = Math.min(window.devicePixelRatio || 1, 2);
+                                var vp = page.getViewport({ scale: (avail / base.width) * dpr });
+                                var c = document.createElement('canvas');
+                                c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+                                c.style.width = '100%'; c.style.height = 'auto'; c.style.display = 'block'; c.style.margin = '0 auto 12px'; c.style.borderRadius = '8px'; c.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)';
+                                box.appendChild(c);
+                                return page.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+                            });
+                        });
+                    })(i);
+                }
+                return chain;
+            }).catch(function () { box.innerHTML = '<div style="text-align:center"><a href="' + url + '">Ouvrir le document</a></div>'; });
+        })();
+        </script>
+        <?php else: ?>
+        <script src="/pdf-viewer.js" defer></script>
+        <?php endif; ?>
     <?php endif; ?>
 </body>
 </html>

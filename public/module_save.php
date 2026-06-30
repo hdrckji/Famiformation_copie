@@ -67,6 +67,34 @@ function handleModuleIconUpload()
     return 'uploads/modules/icons/' . $name;
 }
 
+// Upload générique d'un fichier de module (pdf, vidéo) -> chemin relatif ou null
+function handleModuleFileUpload($field, array $allowedMap, $maxSize, $subdir)
+{
+    if (empty($_FILES[$field]) || ($_FILES[$field]['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        return null;
+    }
+    $f = $_FILES[$field];
+    if ($f['error'] !== UPLOAD_ERR_OK || $f['size'] <= 0 || $f['size'] > $maxSize) {
+        return null;
+    }
+    $mime = function_exists('mime_content_type') ? @mime_content_type($f['tmp_name']) : '';
+    if (isset($allowedMap[$mime])) {
+        $ext = $allowedMap[$mime];
+    } else {
+        $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, array_values($allowedMap), true)) {
+            return null;
+        }
+    }
+    $dir = __DIR__ . '/uploads/modules/' . $subdir;
+    if (!is_dir($dir)) { @mkdir($dir, 0775, true); }
+    $name = $subdir . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+    if (!move_uploaded_file($f['tmp_name'], $dir . '/' . $name)) {
+        return null;
+    }
+    return 'uploads/modules/' . $subdir . '/' . $name;
+}
+
 $redirectTo = safeReturn($_POST['return'] ?? '', 'index.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -139,6 +167,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($id > 0) {
             $db->prepare("UPDATE modules SET is_active = 1 - is_active WHERE id = ?")->execute([$id]);
             $_SESSION['module_flash'] = "✅ Statut du module mis à jour.";
+        }
+    } elseif ($action === 'content') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $module = $id > 0 ? getModuleById($db, $id) : null;
+        if ($module) {
+            $pdfPath   = $module['pdf_path'];
+            $videoPath = $module['video_path'];
+
+            if (!empty($_POST['remove_pdf']))   { $pdfPath = null; }
+            if (!empty($_POST['remove_video'])) { $videoPath = null; }
+
+            $newPdf = handleModuleFileUpload('pdf_file', ['application/pdf' => 'pdf'], 50 * 1024 * 1024, 'pdf');
+            if ($newPdf !== null) { $pdfPath = $newPdf; }
+
+            $newVideo = handleModuleFileUpload('video_file', [
+                'video/mp4' => 'mp4', 'video/webm' => 'webm', 'video/ogg' => 'ogv', 'video/quicktime' => 'mov',
+            ], 300 * 1024 * 1024, 'video');
+            if ($newVideo !== null) { $videoPath = $newVideo; }
+
+            $uniformized = (($_POST['uniformize'] ?? '0') === '1') ? 1 : 0;
+
+            $db->prepare("UPDATE modules SET pdf_path = ?, video_path = ?, uniformized = ? WHERE id = ?")
+               ->execute([$pdfPath, $videoPath, $uniformized, $id]);
+            $_SESSION['module_flash'] = "✅ Contenu du module mis à jour.";
+            $redirectTo = 'module.php?id=' . $id;
         }
     } elseif ($action === 'toggle_lock') {
         $id = (int) ($_POST['id'] ?? 0);

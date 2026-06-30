@@ -33,6 +33,7 @@ if (!function_exists('ensureModulesTable')) {
                 'roles'      => "ALTER TABLE modules ADD COLUMN roles VARCHAR(255) NULL",
                 'icon_image' => "ALTER TABLE modules ADD COLUMN icon_image VARCHAR(255) NULL",
                 'is_locked'  => "ALTER TABLE modules ADD COLUMN is_locked TINYINT(1) NOT NULL DEFAULT 0",
+                'uniformized' => "ALTER TABLE modules ADD COLUMN uniformized TINYINT(1) NOT NULL DEFAULT 0",
             ];
             foreach ($extraColumns as $col => $ddl) {
                 $check = $db->query("SHOW COLUMNS FROM modules LIKE " . $db->quote($col));
