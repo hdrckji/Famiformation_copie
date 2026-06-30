@@ -187,9 +187,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($newVideo !== null) { $videoPath = $newVideo; }
 
             $uniformized = (($_POST['uniformize'] ?? '0') === '1') ? 1 : 0;
+            $aEvaluer = !empty($_POST['a_evaluer']) ? 1 : 0;
 
-            $db->prepare("UPDATE modules SET pdf_path = ?, video_path = ?, uniformized = ? WHERE id = ?")
-               ->execute([$pdfPath, $videoPath, $uniformized, $id]);
+            $db->prepare("UPDATE modules SET pdf_path = ?, video_path = ?, uniformized = ?, a_evaluer = ? WHERE id = ?")
+               ->execute([$pdfPath, $videoPath, $uniformized, $aEvaluer, $id]);
             $_SESSION['module_flash'] = "✅ Contenu du module mis à jour.";
             $redirectTo = 'module.php?id=' . $id;
         }

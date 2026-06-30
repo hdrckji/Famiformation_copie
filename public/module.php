@@ -44,6 +44,8 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         .tile-title { font-size: 1.3rem; font-weight: 700; color: #2d5a37; margin: 10px 0; }
         .tile-desc { font-size: 0.92rem; color: #666; }
         .tile.inactive { opacity: 0.5; }
+        .badge-eval { display:inline-block; background:#2d5a37; color:#fff; font-size:0.78rem; font-weight:700; padding:4px 12px; border-radius:20px; margin-top:8px; }
+        .tile .badge-eval { position:absolute; top:12px; right:12px; margin:0; }
         .content-card { background: rgba(255,255,255,0.96); border-radius: 18px; padding: 32px; width: 90%; max-width: 900px; margin: 30px 0; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         .flash { background: #fff8e1; border: 1px solid #ffe082; color: #6a5400; padding: 12px 18px; border-radius: 12px; width: 90%; max-width: 900px; margin-top: 16px; font-weight: 700; }
         .admin-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
@@ -86,6 +88,9 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         <?php if (!empty($module['description'])): ?>
             <div class="desc"><?= htmlspecialchars($module['description']) ?></div>
         <?php endif; ?>
+        <?php if (!$isContainer && !empty($module['a_evaluer'])): ?>
+            <div><span class="badge-eval">📝 <?= t('À évaluer', 'Te evalueren') ?></span></div>
+        <?php endif; ?>
     </div>
 
     <?php if ($flash): ?><div class="flash"><?= $flash ?></div><?php endif; ?>
@@ -94,6 +99,7 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         <div class="tiles-container">
             <?php foreach ($children as $child): ?>
                 <a href="module.php?id=<?= (int) $child['id'] ?>" class="tile <?= ((int) $child['is_active'] !== 1) ? 'inactive' : '' ?>">
+                    <?php if (!empty($child['a_evaluer'])): ?><span class="badge-eval">📝</span><?php endif; ?>
                     <div class="tile-icon"><?= moduleIconHtml($child, '3rem') ?></div>
                     <div class="tile-title"><?= htmlspecialchars($child['nom']) ?></div>
                     <div class="tile-desc"><?= htmlspecialchars($child['description'] ?? '') ?></div>
@@ -218,6 +224,11 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
                             <label class="chk" style="display:inline-flex; margin-left:12px;"><input type="checkbox" name="remove_video" value="1"> Supprimer</label>
                         </div>
                     <?php endif; ?>
+
+                    <label class="chk" style="margin-top:18px; padding:12px 14px; background:#f4f7f6; border-radius:10px;">
+                        <input type="checkbox" name="a_evaluer" value="1" <?= !empty($module['a_evaluer']) ? 'checked' : '' ?>>
+                        📝 Ce contenu est à évaluer <small style="font-weight:400; color:#777;">(il apparaîtra aussi dans « Formation »)</small>
+                    </label>
 
                     <p style="font-size:0.82rem; color:#777; margin-top:14px;">« Valider et uniformiser » affiche le PDF dans une mise en page intégrée au site (au lieu du lecteur PDF brut).</p>
                     <div class="modal-actions">
