@@ -52,10 +52,17 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         .btn-danger { background: #c94a42; color: #fff; }
         /* Modale */
         .modal-backdrop { position: fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
-        .modal-card { background: #fff; border-radius: 14px; padding: 28px; max-width: 460px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+        .modal-card { background: #fff; border-radius: 14px; padding: 28px; max-width: 480px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
         .modal-card h3 { margin-top: 0; color: #2d5a37; }
         .modal-card label { display:block; font-weight:700; color:#244230; margin: 12px 0 4px; }
         .modal-card input[type=text], .modal-card textarea { width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px; font:inherit; }
+        .modal-card input[type=file] { width:100%; }
+        .modal-card .chk { font-weight:600; display:flex; align-items:center; gap:8px; }
+        .icon-wrap { display:flex; flex-wrap:wrap; gap:6px; }
+        .icon-opt { font-size:1.3rem; background:#f4f7f6; border:2px solid transparent; border-radius:10px; padding:6px 8px; cursor:pointer; }
+        .icon-opt.sel { border-color:#2d5a37; background:#e8f5e9; }
+        .roles-wrap { display:flex; flex-wrap:wrap; gap:12px; }
+        .role-chk { font-weight:600; display:flex; align-items:center; gap:6px; }
         .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
         .btn-cancel { background:#e9ecef; color:#333; }
     </style>
@@ -79,25 +86,12 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
                     <div class="tile-icon"><?= moduleIconHtml($child, '3rem') ?></div>
                     <div class="tile-title"><?= htmlspecialchars($child['nom']) ?></div>
                     <div class="tile-desc"><?= htmlspecialchars($child['description'] ?? '') ?></div>
-                    <?php if ($isAdmin): ?>
-                        <form method="POST" action="module_save.php" onsubmit="return confirm('Supprimer ce module ?');" style="margin-top:12px;">
-                            <?= csrfField() ?>
-                            <input type="hidden" name="action" value="delete">
-                            <input type="hidden" name="id" value="<?= (int) $child['id'] ?>">
-                            <button type="submit" class="btn btn-danger" style="font-size:0.8rem;padding:6px 12px;">🗑 Supprimer</button>
-                        </form>
-                    <?php endif; ?>
                 </a>
             <?php endforeach; ?>
             <?php if (empty($children)): ?>
                 <div class="content-card" style="text-align:center;">Aucun sous-module pour l'instant.</div>
             <?php endif; ?>
         </div>
-        <?php if ($isAdmin): ?>
-            <div class="admin-actions">
-                <button type="button" class="btn btn-create" onclick="document.getElementById('createModal').style.display='flex';">➕ Ajouter un sous-module</button>
-            </div>
-        <?php endif; ?>
     <?php else: ?>
         <div class="content-card">
             <?php if (!empty($module['pdf_path']) || !empty($module['video_path'])): ?>
@@ -108,26 +102,54 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         </div>
     <?php endif; ?>
 
-    <?php if ($isAdmin && $isContainer): ?>
-    <div id="createModal" class="modal-backdrop">
-        <div class="modal-card">
-            <h3>Nouveau sous-module</h3>
-            <form method="POST" action="module_save.php">
-                <?= csrfField() ?>
-                <input type="hidden" name="action" value="create">
-                <input type="hidden" name="parent_id" value="<?= (int) $module['id'] ?>">
-                <label>Nom du module</label>
-                <input type="text" name="nom" required maxlength="150">
-                <label>Description (quelques mots)</label>
-                <textarea name="description" rows="2" maxlength="500"></textarea>
-                <label style="margin-top:14px;"><input type="checkbox" name="is_container" value="1"> Mon module contient d'autres modules</label>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-cancel" onclick="document.getElementById('createModal').style.display='none';">Annuler</button>
-                    <button type="submit" class="btn btn-create">Créer</button>
-                </div>
-            </form>
+    <?php if ($isAdmin): ?>
+        <div class="admin-actions">
+            <button type="button" class="btn btn-create" onclick="document.getElementById('editModal').style.display='flex';">✏️ Modifier ce module</button>
+            <?php if ($isContainer): ?>
+                <button type="button" class="btn btn-create" onclick="document.getElementById('createModal').style.display='flex';">➕ Ajouter un sous-module</button>
+            <?php endif; ?>
         </div>
-    </div>
+        <div style="color:#fff; background:rgba(0,0,0,0.3); padding:8px 14px; border-radius:10px; font-size:0.85rem; margin-top:8px;">ℹ️ La suppression se fait dans ⚙️ Paramètres → Gestion des modules.</div>
+
+        <!-- Modale : modifier ce module -->
+        <div id="editModal" class="modal-backdrop">
+            <div class="modal-card">
+                <h3>Modifier ce module</h3>
+                <form method="POST" action="module_save.php" enctype="multipart/form-data" onsubmit="return confirm('Enregistrer les modifications ?');">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="id" value="<?= (int) $module['id'] ?>">
+                    <input type="hidden" name="return" value="module.php?id=<?= (int) $module['id'] ?>">
+                    <?php renderModuleFields('medit', $module, moduleProfiles(), moduleIconChoices()); ?>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-cancel" onclick="document.getElementById('editModal').style.display='none';">Annuler</button>
+                        <button type="submit" class="btn btn-create">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <?php if ($isContainer): ?>
+        <!-- Modale : ajouter un sous-module -->
+        <div id="createModal" class="modal-backdrop">
+            <div class="modal-card">
+                <h3>Nouveau sous-module</h3>
+                <form method="POST" action="module_save.php" enctype="multipart/form-data">
+                    <?= csrfField() ?>
+                    <input type="hidden" name="action" value="create">
+                    <input type="hidden" name="parent_id" value="<?= (int) $module['id'] ?>">
+                    <input type="hidden" name="return" value="module.php?id=<?= (int) $module['id'] ?>">
+                    <?php renderModuleFields('mcreate', [], moduleProfiles(), moduleIconChoices()); ?>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-cancel" onclick="document.getElementById('createModal').style.display='none';">Annuler</button>
+                        <button type="submit" class="btn btn-create">Créer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <?= moduleFormScript() ?>
     <?php endif; ?>
 </body>
 </html>

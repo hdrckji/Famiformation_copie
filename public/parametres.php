@@ -17,10 +17,48 @@ if (!empty($_SESSION['module_flash'])) {
     unset($_SESSION['module_flash']);
 }
 
-$modules  = getModules($db, null, false); // tous les modules racine (actifs + inactifs)
 $profiles = moduleProfiles();
 $icons    = moduleIconChoices();
-// renderModuleFields(), rolesLabel(), moduleIconHtml() viennent de includes/modules.php
+// renderModuleFields(), rolesLabel(), moduleIconHtml(), adminPasswordOk() viennent de includes/modules.php
+
+// Tous les modules, organisés en arbre (parents puis enfants indentés)
+$allModules = getAllModules($db);
+$byParent = [];
+foreach ($allModules as $m) {
+    $byParent[(int) ($m['parent_id'] ?? 0)][] = $m;
+}
+function flattenModules(array $byParent, $parentId, $depth, array &$out)
+{
+    if (empty($byParent[$parentId])) {
+        return;
+    }
+    foreach ($byParent[$parentId] as $mod) {
+        $mod['_depth'] = $depth;
+        $out[] = $mod;
+        flattenModules($byParent, (int) $mod['id'], $depth + 1, $out);
+    }
+}
+$orderedModules = [];
+flattenModules($byParent, 0, 0, $orderedModules);
+
+// Données pour les onglets de gestion
+$usersList = $db->query("SELECT id, nom, prenom, identifiant, email, role, interim, statut, account_activation_pending, mot_de_passe FROM utilisateurs WHERE role <> 'agence_interim' ORDER BY nom ASC, prenom ASC")->fetchAll(PDO::FETCH_ASSOC);
+
+$roleCounts = [];
+foreach ($db->query("SELECT role, COUNT(*) AS c FROM utilisateurs GROUP BY role")->fetchAll(PDO::FETCH_ASSOC) as $rc) {
+    $roleCounts[$rc['role']] = (int) $rc['c'];
+}
+
+$agencesList = [];
+try {
+    $agencesList = $db->query("SELECT nom_agence FROM interim_agences ORDER BY nom_agence ASC")->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    $agencesList = [];
+}
+$agenceCounts = [];
+foreach ($db->query("SELECT interim, COUNT(*) AS c FROM utilisateurs WHERE interim IS NOT NULL AND interim <> '' GROUP BY interim")->fetchAll(PDO::FETCH_ASSOC) as $ac) {
+    $agenceCounts[$ac['interim']] = (int) $ac['c'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -99,58 +137,124 @@ $icons    = moduleIconChoices();
             </div>
             <table>
                 <thead>
-                    <tr><th>Icône</th><th>Nom</th><th>Type</th><th>Accès</th><th>Statut</th><th>Actions</th></tr>
+                    <tr><th>Icône</th><th>Nom</th><th>Type</th><th>Accès</th><th>Statut</th><th>Verrou</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($modules as $m): ?>
+                    <?php foreach ($orderedModules as $m): $depth = (int) ($m['_depth'] ?? 0); ?>
                     <tr>
-                        <td><?= moduleIconHtml($m, '1.8rem') ?></td>
+                        <td><?= moduleIconHtml($m, '1.6rem') ?></td>
                         <td>
-                            <strong><?= htmlspecialchars($m['nom']) ?></strong>
-                            <div class="muted" style="font-size:0.82rem;"><?= htmlspecialchars($m['description'] ?? '') ?></div>
+                            <div style="padding-left:<?= $depth * 18 ?>px;">
+                                <?= $depth > 0 ? '↳ ' : '' ?><strong><?= htmlspecialchars($m['nom']) ?></strong>
+                                <?php if (!empty($m['is_locked'])): ?> <span title="Verrouillé">🔒</span><?php endif; ?>
+                                <div class="muted" style="font-size:0.82rem;"><?= htmlspecialchars($m['description'] ?? '') ?></div>
+                            </div>
                         </td>
                         <td><?= !empty($m['is_container']) ? 'Conteneur' : 'Contenu' ?></td>
                         <td><?= htmlspecialchars(rolesLabel($m, $profiles)) ?></td>
                         <td>
-                            <?php if ((int) $m['is_active'] === 1): ?>
-                                <span class="pill on">Actif</span>
-                            <?php else: ?>
-                                <span class="pill off">Inactif</span>
-                            <?php endif; ?>
+                            <?php if ((int) $m['is_active'] === 1): ?><span class="pill on">Actif</span><?php else: ?><span class="pill off">Inactif</span><?php endif; ?>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-light" onclick="askPassword('toggle_lock', <?= (int) $m['id'] ?>)"><?= !empty($m['is_locked']) ? '🔓 Déverrouiller' : '🔒 Verrouiller' ?></button>
                         </td>
                         <td>
                             <div class="row-actions">
-                                <button type="button" class="btn btn-light" onclick="openModal('editModal_<?= (int) $m['id'] ?>')">✏️ Modifier</button>
-                                <form method="POST" action="module_save.php">
+                                <button type="button" class="btn btn-light" onclick="openModal('editModal_<?= (int) $m['id'] ?>')">✏️</button>
+                                <form method="POST" action="module_save.php" style="display:inline;">
                                     <?= csrfField() ?>
                                     <input type="hidden" name="action" value="toggle">
                                     <input type="hidden" name="id" value="<?= (int) $m['id'] ?>">
                                     <input type="hidden" name="return" value="parametres.php">
-                                    <button type="submit" class="btn btn-light"><?= (int) $m['is_active'] === 1 ? '⏸ Désactiver' : '▶ Activer' ?></button>
+                                    <button type="submit" class="btn btn-light" title="Activer / Désactiver"><?= (int) $m['is_active'] === 1 ? '⏸' : '▶' ?></button>
                                 </form>
-                                <form method="POST" action="module_save.php" onsubmit="return confirm('Supprimer définitivement ce module (et ses sous-modules) ?');">
-                                    <?= csrfField() ?>
-                                    <input type="hidden" name="action" value="delete">
-                                    <input type="hidden" name="id" value="<?= (int) $m['id'] ?>">
-                                    <input type="hidden" name="return" value="parametres.php">
-                                    <button type="submit" class="btn btn-danger">🗑</button>
-                                </form>
+                                <?php if (!empty($m['is_locked'])): ?>
+                                    <button type="button" class="btn btn-danger" onclick="askPassword('delete', <?= (int) $m['id'] ?>)" title="Supprimer (verrouillé)">🗑</button>
+                                <?php else: ?>
+                                    <form method="POST" action="module_save.php" style="display:inline;" onsubmit="return confirm('Supprimer définitivement ce module (et ses sous-modules) ?');">
+                                        <?= csrfField() ?>
+                                        <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="id" value="<?= (int) $m['id'] ?>">
+                                        <input type="hidden" name="return" value="parametres.php">
+                                        <button type="submit" class="btn btn-danger" title="Supprimer">🗑</button>
+                                    </form>
+                                <?php endif; ?>
                             </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
-                    <?php if (empty($modules)): ?>
-                    <tr><td colspan="6" class="muted" style="text-align:center;">Aucun module créé pour l'instant.</td></tr>
+                    <?php if (empty($orderedModules)): ?>
+                    <tr><td colspan="7" class="muted" style="text-align:center;">Aucun module créé pour l'instant.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- ONGLETS à venir -->
-    <div id="tab-histuser" class="tab-content"><div class="card"><div class="soon">Gestion des utilisateurs — à venir.</div></div></div>
-    <div id="tab-histprofil" class="tab-content"><div class="card"><div class="soon">Gestion des profils — à venir.</div></div></div>
-    <div id="tab-histagence" class="tab-content"><div class="card"><div class="soon">Gestion des agences — à venir.</div></div></div>
+    <!-- ONGLET : Gestion des utilisateurs -->
+    <div id="tab-histuser" class="tab-content">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0; color:#2d5a37;">Utilisateurs (<?= count($usersList) ?>)</h2>
+                <a href="admin.php" class="btn btn-primary">Gérer dans RH</a>
+            </div>
+            <table>
+                <thead><tr><th>Nom</th><th>Identifiant</th><th>Profil</th><th>Agence</th><th>Statut</th><th>Fiche</th></tr></thead>
+                <tbody>
+                    <?php foreach ($usersList as $u): ?>
+                    <tr>
+                        <td><?= htmlspecialchars(trim($u['nom'] . ' ' . $u['prenom'])) ?></td>
+                        <td class="muted"><?= htmlspecialchars($u['identifiant']) ?></td>
+                        <td><?= htmlspecialchars($profiles[$u['role']] ?? $u['role']) ?></td>
+                        <td><?= htmlspecialchars($u['interim'] !== null && $u['interim'] !== '' ? $u['interim'] : '—') ?></td>
+                        <td>
+                            <?php if (($u['statut'] ?? '') === 'inactif'): ?><span class="pill off">Inactif</span>
+                            <?php elseif (!empty($u['account_activation_pending']) || empty($u['mot_de_passe'])): ?><span class="pill" style="background:#fff3cd;color:#856404;">En attente</span>
+                            <?php else: ?><span class="pill on">Actif</span><?php endif; ?>
+                        </td>
+                        <td><a href="admin_user.php?id=<?= (int) $u['id'] ?>" title="Voir la fiche">🔎</a></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ONGLET : Gestion des profils -->
+    <div id="tab-histprofil" class="tab-content">
+        <div class="card">
+            <h2 style="margin-top:0; color:#2d5a37;">Profils</h2>
+            <p class="muted">Profils existants et nombre d'utilisateurs. La création/suppression de profils (rôles dynamiques) arrivera dans une prochaine étape.</p>
+            <table>
+                <thead><tr><th>Profil</th><th>Clé technique</th><th>Utilisateurs</th></tr></thead>
+                <tbody>
+                    <?php foreach ($profiles as $key => $lbl): ?>
+                    <tr><td><?= htmlspecialchars($lbl) ?></td><td class="muted"><?= htmlspecialchars($key) ?></td><td><?= (int) ($roleCounts[$key] ?? 0) ?></td></tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ONGLET : Gestion des agences -->
+    <div id="tab-histagence" class="tab-content">
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0; color:#2d5a37;">Agences intérim (<?= count($agencesList) ?>)</h2>
+                <a href="admin_agences_interim.php" class="btn btn-primary">Gérer les agences</a>
+            </div>
+            <table>
+                <thead><tr><th>Agence</th><th>Collaborateurs rattachés</th></tr></thead>
+                <tbody>
+                    <?php foreach ($agencesList as $ag): ?>
+                    <tr><td><?= htmlspecialchars($ag) ?></td><td><?= (int) ($agenceCounts[$ag] ?? 0) ?></td></tr>
+                    <?php endforeach; ?>
+                    <?php if (empty($agencesList)): ?><tr><td colspan="2" class="muted">Aucune agence pour l'instant.</td></tr><?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <div id="tab-prefs" class="tab-content"><div class="card"><div class="soon">Préférences (langue FR/NL, personnalisation) — à venir.</div></div></div>
 </div>
 
@@ -172,7 +276,7 @@ $icons    = moduleIconChoices();
 </div>
 
 <!-- Modales édition (une par module) -->
-<?php foreach ($modules as $m): ?>
+<?php foreach ($orderedModules as $m): ?>
 <div id="editModal_<?= (int) $m['id'] ?>" class="modal-backdrop">
     <div class="modal-card">
         <h3>Modifier « <?= htmlspecialchars($m['nom']) ?> »</h3>
@@ -191,7 +295,33 @@ $icons    = moduleIconChoices();
 </div>
 <?php endforeach; ?>
 
+<!-- Modale : confirmation par mot de passe admin (verrou / suppression d'un module verrouillé) -->
+<div id="pwdModal" class="modal-backdrop">
+    <div class="modal-card">
+        <h3 id="pwdTitle">Confirmation</h3>
+        <p>Entrez votre <strong>mot de passe administrateur</strong> pour confirmer.</p>
+        <form method="POST" action="module_save.php">
+            <?= csrfField() ?>
+            <input type="hidden" name="action" id="pwdAction" value="">
+            <input type="hidden" name="id" id="pwdId" value="">
+            <input type="hidden" name="return" value="parametres.php">
+            <input type="password" name="admin_password" id="pwdInput" placeholder="Mot de passe admin" required style="width:100%; box-sizing:border-box; padding:10px; border:1px solid #ccc; border-radius:8px;">
+            <div class="modal-actions">
+                <button type="button" class="btn btn-light" onclick="closeModal('pwdModal')">Annuler</button>
+                <button type="submit" class="btn btn-primary">Confirmer</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    function askPassword(action, id) {
+        document.getElementById('pwdAction').value = action;
+        document.getElementById('pwdId').value = id;
+        document.getElementById('pwdTitle').textContent = (action === 'delete') ? 'Supprimer ce module verrouillé' : 'Verrouiller / déverrouiller le module';
+        document.getElementById('pwdInput').value = '';
+        openModal('pwdModal');
+    }
     function showTab(name, btn) {
         document.querySelectorAll('.tab-content').forEach(function (c) { c.classList.remove('active'); });
         document.querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });

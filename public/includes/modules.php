@@ -32,6 +32,7 @@ if (!function_exists('ensureModulesTable')) {
                 'icon'       => "ALTER TABLE modules ADD COLUMN icon VARCHAR(16) NULL",
                 'roles'      => "ALTER TABLE modules ADD COLUMN roles VARCHAR(255) NULL",
                 'icon_image' => "ALTER TABLE modules ADD COLUMN icon_image VARCHAR(255) NULL",
+                'is_locked'  => "ALTER TABLE modules ADD COLUMN is_locked TINYINT(1) NOT NULL DEFAULT 0",
             ];
             foreach ($extraColumns as $col => $ddl) {
                 $check = $db->query("SHOW COLUMNS FROM modules LIKE " . $db->quote($col));
@@ -105,6 +106,30 @@ if (!function_exists('ensureModulesTable')) {
         $stmt->execute([(int) $id]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
+    }
+
+    /**
+     * Tous les modules (racine + sous-modules), pour l'écran de gestion.
+     */
+    function getAllModules(PDO $db)
+    {
+        ensureModulesTable($db);
+        return $db->query("SELECT * FROM modules ORDER BY sort_order ASC, nom ASC")->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Vérifie le mot de passe de l'admin connecté.
+     */
+    function adminPasswordOk(PDO $db, $password)
+    {
+        $uid = $_SESSION['user_id'] ?? 0;
+        if (!$uid || $password === '') {
+            return false;
+        }
+        $stmt = $db->prepare("SELECT mot_de_passe FROM utilisateurs WHERE id = ? LIMIT 1");
+        $stmt->execute([(int) $uid]);
+        $hash = $stmt->fetchColumn();
+        return $hash && password_verify($password, $hash);
     }
 
     /**

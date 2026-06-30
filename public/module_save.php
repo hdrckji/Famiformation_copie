@@ -140,15 +140,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->prepare("UPDATE modules SET is_active = 1 - is_active WHERE id = ?")->execute([$id]);
             $_SESSION['module_flash'] = "✅ Statut du module mis à jour.";
         }
+    } elseif ($action === 'toggle_lock') {
+        $id = (int) ($_POST['id'] ?? 0);
+        if ($id > 0) {
+            if (adminPasswordOk($db, (string) ($_POST['admin_password'] ?? ''))) {
+                $db->prepare("UPDATE modules SET is_locked = 1 - is_locked WHERE id = ?")->execute([$id]);
+                $_SESSION['module_flash'] = "✅ Verrouillage du module mis à jour.";
+            } else {
+                $_SESSION['module_flash'] = "❌ Mot de passe admin incorrect : verrouillage inchangé.";
+            }
+        }
     } elseif ($action === 'delete') {
         $id = (int) ($_POST['id'] ?? 0);
         if ($id > 0) {
             $module = getModuleById($db, $id);
-            // Supprime aussi les éventuels sous-modules
-            $db->prepare("DELETE FROM modules WHERE id = ? OR parent_id = ?")->execute([$id, $id]);
-            $_SESSION['module_flash'] = "✅ Module supprimé.";
-            if ($module && !empty($module['parent_id'])) {
-                $redirectTo = 'module.php?id=' . (int) $module['parent_id'];
+            if ($module) {
+                $locked = !empty($module['is_locked']);
+                if ($locked && !adminPasswordOk($db, (string) ($_POST['admin_password'] ?? ''))) {
+                    $_SESSION['module_flash'] = "❌ Module verrouillé : mot de passe admin incorrect, suppression annulée.";
+                } else {
+                    // Supprime aussi les éventuels sous-modules
+                    $db->prepare("DELETE FROM modules WHERE id = ? OR parent_id = ?")->execute([$id, $id]);
+                    $_SESSION['module_flash'] = "✅ Module supprimé.";
+                    if (!empty($module['parent_id'])) {
+                        $redirectTo = 'module.php?id=' . (int) $module['parent_id'];
+                    }
+                }
             }
         }
     }
