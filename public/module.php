@@ -210,6 +210,10 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
         <?= moduleFormScript() ?>
     <?php endif; ?>
 
+    <?php if (!$isContainer && !empty($module['video_path'])): ?>
+        <script src="/video-upload-lock.js" defer></script>
+    <?php endif; ?>
+
     <?php if (!$isContainer && !empty($module['pdf_path'])): ?>
         <?php if (!empty($module['uniformized'])): ?>
         <script>
