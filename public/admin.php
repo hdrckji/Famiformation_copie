@@ -429,7 +429,6 @@ $users = $db->query($query_str)->fetchAll();
                 <input type="email" name="new_email" value="<?php echo htmlspecialchars($createForm['new_email']); ?>" placeholder="Email (optionnel)" class="input-mini">
                 <select name="new_interim" id="new_interim" class="input-mini" required>
                     <option value="" <?php if ($createForm['new_interim'] === '') echo 'selected'; ?>>Sélectionner une agence intérim</option>
-                    <option value="__none__" <?php if ($createForm['new_interim'] === '__none__') echo 'selected'; ?>>Aucune agence</option>
                     <?php foreach ($agencesInterim as $agenceNom): ?>
                         <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if ($createForm['new_interim'] === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                     <?php endforeach; ?>
@@ -488,7 +487,6 @@ $users = $db->query($query_str)->fetchAll();
                     <div style="flex:1; display:flex; align-items:center; justify-content:center;">
                         <select id="filter_agence" name="filter_agence" class="filter-select" style="height:32px; min-width:120px; font-size:1em; margin-right:18px;" onchange="document.getElementById('filterForm').submit()">
                             <option value="">Toutes les agences</option>
-                            <option value="__none__" <?php if($agence_filter === '__none__') echo 'selected'; ?>>Aucune agence</option>
                             <?php foreach ($agencesInterim as $agenceNom): ?>
                                 <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if($agence_filter === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                             <?php endforeach; ?>
@@ -553,7 +551,7 @@ $users = $db->query($query_str)->fetchAll();
                                 <?php echo csrfField(); ?>
                                 <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
                                 <select name="nouveau_interim" class="input-mini" style="width:180px;">
-                                    <option value="__none__" <?php if (empty($u['interim'])) echo 'selected'; ?>>Aucune agence</option>
+                                    <option value="" <?php if (empty($u['interim'])) echo 'selected'; ?>>— Sélectionner —</option>
                                     <?php foreach ($agencesInterim as $agenceNom): ?>
                                         <option value="<?php echo htmlspecialchars($agenceNom); ?>" <?php if (($u['interim'] ?? '') === $agenceNom) echo 'selected'; ?>><?php echo htmlspecialchars($agenceNom); ?></option>
                                     <?php endforeach; ?>
@@ -592,7 +590,7 @@ $users = $db->query($query_str)->fetchAll();
                         <td class="status-cell">
                             <?php if (($u['statut'] ?? '') === 'inactif'): ?>
                                 <span class="status-badge status-inactive">Inactif</span>
-                            <?php elseif (!empty($u['account_activation_pending'])): ?>
+                            <?php elseif (!empty($u['account_activation_pending']) || empty($u['mot_de_passe'])): ?>
                                 <span class="status-badge status-pending">En attente</span>
                             <?php else: ?>
                                 <span class="status-badge status-active">Actif</span>
