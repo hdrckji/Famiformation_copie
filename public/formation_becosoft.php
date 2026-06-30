@@ -90,7 +90,7 @@ $role = isset($_SESSION['role']) ? $_SESSION['role'] : 'etudiant';
 
     <div class="top-nav">
         <a href="index.php" class="btn-nav">⬅ Retour</a>
-        <a href="logout.php" class="btn-nav" style="color:#d93025;">Déconnexion</a>
+        <a href="logout.php" class="btn-nav" style="color:#d93025;" onclick="return confirm('<?= t('Êtes-vous sûr de vouloir vous déconnecter ?', 'Weet je zeker dat je je wilt afmelden?') ?>');"><?= t('Déconnexion', 'Afmelden') ?></a>
     </div>
 
     <div class="header-logo">

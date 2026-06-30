@@ -64,7 +64,7 @@ if (!empty($_SESSION['module_flash'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accueil - FamiFormation</title>
+    <title><?= t('Accueil', 'Home') ?> - FamiFormation</title>
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Open Sans', sans-serif; background: url('background.jpg') no-repeat center center fixed; background-size: cover; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
@@ -154,6 +154,11 @@ if (!empty($_SESSION['module_flash'])) {
         .tile-inactive { opacity: 0.45; }
         .btn-param { background: rgba(255,255,255,0.9); color: #2d5a37; text-decoration: none; padding: 12px 18px; border-radius: 30px; font-weight: bold; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: all 0.3s ease; }
         .btn-param:hover { background: #fff; transform: scale(1.05); }
+        .lang-switch { display: flex; gap: 6px; }
+        .lang-btn { background: rgba(255,255,255,0.9); color: #2d5a37; text-decoration: none; padding: 6px 12px; border-radius: 20px; font-weight: 700; font-size: 0.8rem; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .lang-btn.active { background: #2d5a37; color: #fff; }
+        .lang-btn:hover { background: #fff; }
+        .lang-btn.active:hover { background: #357a44; }
         .quick-create-btn { position: fixed; bottom: 20px; right: 20px; background: #2d5a37; color: #fff; border: none; border-radius: 30px; padding: 12px 20px; font-weight: 700; cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,0.2); z-index: 1500; }
         .quick-create-btn:hover { background: #357a44; }
         .module-flash { background: #fff8e1; border: 1px solid #ffe082; color: #6a5400; padding: 12px 20px; border-radius: 14px; font-weight: 700; margin: 8px auto 0; max-width: 600px; text-align: center; }
@@ -204,11 +209,17 @@ if (!empty($_SESSION['module_flash'])) {
             <?php endif; ?>
             <span><?= htmlspecialchars($userNom ?: ($_SESSION['username'] ?? '')) ?></span>
         </a>
-        <div style="display:flex; align-items:center; gap:10px;">
-            <?php if ($isAdmin): ?>
-            <a href="parametres.php" class="btn-param" title="Paramètres">⚙️ Paramètres</a>
-            <?php endif; ?>
-            <a href="logout.php" class="btn-logout">Déconnexion</a>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <?php if ($isAdmin): ?>
+                <a href="parametres.php" class="btn-param" title="<?= t('Paramètres', 'Instellingen') ?>">⚙️ <?= t('Paramètres', 'Instellingen') ?></a>
+                <?php endif; ?>
+                <a href="logout.php" class="btn-logout" onclick="return confirm('<?= t('Êtes-vous sûr de vouloir vous déconnecter ?', 'Weet je zeker dat je je wilt afmelden?') ?>');"><?= t('Déconnexion', 'Afmelden') ?></a>
+            </div>
+            <div class="lang-switch">
+                <a href="?lang=fr" class="lang-btn<?= currentLang() === 'fr' ? ' active' : '' ?>">FR</a>
+                <a href="?lang=nl" class="lang-btn<?= currentLang() === 'nl' ? ' active' : '' ?>">NL</a>
+            </div>
         </div>
     </div>
 
@@ -224,33 +235,33 @@ if (!empty($_SESSION['module_flash'])) {
         <?php if ($role !== 'etudiant' || $onboarding_unlocked): ?>
         <a href="onboarding.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🚀</span></div>
-            <div class="tile-title">Onboarding
+            <div class="tile-title"><?= t('Onboarding', 'Onboarding') ?>
             </div>
-            <div class="tile-desc">Bienvenue chez Famiflora ! Découvrez notre univers.</div>
+            <div class="tile-desc"><?= t('Bienvenue chez Famiflora ! Découvrez notre univers.', 'Welkom bij Famiflora! Ontdek onze wereld.') ?></div>
         </a>
         <?php endif; ?>
 
         <!-- planning des formations : désormais visible pour tous les rôles -->
         <a href="formation.php" class="tile">
             <?php if ($nouvelles_formations > 0): ?>
-                <span class="badge-new">NOUVEAU</span>
+                <span class="badge-new"><?= t('NOUVEAU', 'NIEUW') ?></span>
             <?php endif; ?>
             <div class="tile-media"><span class="tile-icon">📅</span></div>
-            <div class="tile-title">Planning Formations</div>
-            <div class="tile-desc">Inscrivez-vous aux sessions en présentiel.</div>
+            <div class="tile-title"><?= t('Planning Formations', 'Opleidingsplanning') ?></div>
+            <div class="tile-desc"><?= t('Inscrivez-vous aux sessions en présentiel.', 'Schrijf je in voor de sessies ter plaatse.') ?></div>
         </a>
 
         <?php if ($role === 'admin' || $role === 'teamcoach' || $role === 'mentor' || $role === 'employe_magasin'): ?>
         <a href="magasin.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🛒</span></div>
-            <div class="tile-title">Magasin</div>
-            <div class="tile-desc">Procédures de vente et caisses.</div>
+            <div class="tile-title"><?= t('Magasin', 'Winkel') ?></div>
+            <div class="tile-desc"><?= t('Procédures de vente et caisses.', 'Verkoop- en kassaprocedures.') ?></div>
         </a>
         <?php if ($role !== 'employe_magasin'): ?>
         <a href="management.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🧑‍💼</span></div>
-            <div class="tile-title">Management</div>
-            <div class="tile-desc">Outils et formations pour managers et mentors.</div>
+            <div class="tile-title"><?= t('Management', 'Management') ?></div>
+            <div class="tile-desc"><?= t('Outils et formations pour managers et mentors.', 'Tools en opleidingen voor managers en mentoren.') ?></div>
         </a>
         <?php endif; ?>
         <?php endif; ?>
@@ -259,7 +270,7 @@ if (!empty($_SESSION['module_flash'])) {
         <a href="formation_becosoft.php" class="tile">
             <div class="tile-media-beco"><img src="beco.png" alt="Becosoft" class="logo-beco-tile"></div>
             <div class="tile-title">Becosoft</div>
-            <div class="tile-desc">Logiciel de gestion de stock.</div>
+            <div class="tile-desc"><?= t('Logiciel de gestion de stock.', 'Software voor voorraadbeheer.') ?></div>
         </a>
         <?php endif; ?>
 
@@ -268,50 +279,50 @@ if (!empty($_SESSION['module_flash'])) {
         <a href="formation-caisse.php" class="tile">
             <div class="tile-media"><span class="tile-icon">💳</span></div>
             <div class="tile-title tile-title-stack">
-                <span>Formation Caisse</span>
+                <span><?= t('Formation Caisse', 'Kassaopleiding') ?></span>
                 <span class="tile-badges-row">
-                    <span class="tile-badge required">Obligatoire</span>
+                    <span class="tile-badge required"><?= t('Obligatoire', 'Verplicht') ?></span>
                     <?php if ($caisse_valid): ?>
-                        <span class="tile-badge valid">Quiz validés</span>
+                        <span class="tile-badge valid"><?= t('Quiz validés', 'Quiz geslaagd') ?></span>
                     <?php endif; ?>
                 </span>
             </div>
-            <div class="tile-desc">Parcours rapide sur l’utilisation de la caisse.</div>
+            <div class="tile-desc"><?= t('Parcours rapide sur l’utilisation de la caisse.', 'Snelle module over het gebruik van de kassa.') ?></div>
         </a>
 
         <?php if ($onboarding_completed): ?>
         <a href="student_disponibilites.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🗓️</span></div>
-            <div class="tile-title">Mes disponibilités</div>
-            <div class="tile-desc">Indique tes jours de disponibilité sur les 30 prochains jours.</div>
+            <div class="tile-title"><?= t('Mes disponibilités', 'Mijn beschikbaarheden') ?></div>
+            <div class="tile-desc"><?= t('Indique tes jours de disponibilité sur les 30 prochains jours.', 'Geef je beschikbare dagen voor de komende 30 dagen aan.') ?></div>
         </a>
         <?php endif; ?>
 
         <a href="mon_horaire.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🕒</span></div>
-            <div class="tile-title">Mes horaires attribués</div>
-            <div class="tile-desc">Consulte tes créneaux passés, du jour et futurs en lecture seule.</div>
+            <div class="tile-title"><?= t('Mes horaires attribués', 'Mijn toegewezen uren') ?></div>
+            <div class="tile-desc"><?= t('Consulte tes créneaux passés, du jour et futurs en lecture seule.', 'Bekijk je vroegere, huidige en toekomstige uren (alleen lezen).') ?></div>
         </a>
         <?php endif; ?>
 
         <?php if ($role === 'admin' || $role === 'employe_logistique' || $role === 'teamcoach' || $role === 'mentor'): ?>
         <a href="logistique.php" class="tile">
             <div class="tile-media"><span class="tile-icon">📦</span></div>
-            <div class="tile-title">Logistique</div>
-            <div class="tile-desc">Gestion des flux et des stocks.</div>
+            <div class="tile-title"><?= t('Logistique', 'Logistiek') ?></div>
+            <div class="tile-desc"><?= t('Gestion des flux et des stocks.', 'Beheer van stromen en voorraden.') ?></div>
         </a>
         <?php endif; ?>
       
         <?php if ($role !== 'etudiant'): ?>
         <a href="classement.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🏆</span></div>
-            <div class="tile-title">Classement</div>
-            <div class="tile-desc">Tableau des scores et points.</div>
+            <div class="tile-title"><?= t('Classement', 'Klassement') ?></div>
+            <div class="tile-desc"><?= t('Tableau des scores et points.', 'Scorebord en punten.') ?></div>
         </a>
         <a href="securite_travail.php" class="tile">
             <div class="tile-media"><span class="tile-icon">🦺</span></div>
-            <div class="tile-title">Sécurité au travail</div>
-            <div class="tile-desc">Chaussure de sécurité & secourisme</div>
+            <div class="tile-title"><?= t('Sécurité au travail', 'Veiligheid op het werk') ?></div>
+            <div class="tile-desc"><?= t('Chaussure de sécurité & secourisme', 'Veiligheidsschoenen & EHBO') ?></div>
         </a>
         <?php endif; ?>
 
@@ -319,39 +330,39 @@ if (!empty($_SESSION['module_flash'])) {
         <a href="https://student.famiformation.com" target="_blank" rel="noopener" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">💼</span></div>
             <div class="tile-title">Famijob</div>
-            <div class="tile-desc">Accéder à la plateforme Famijob (gestion des jobs étudiants).</div>
+            <div class="tile-desc"><?= t('Accéder à la plateforme Famijob (gestion des jobs étudiants).', 'Toegang tot het Famijob-platform (beheer van studentenjobs).') ?></div>
         </a>
         <?php if ($role === 'admin'): ?>
         <a href="interim_horaires_demandes.php" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">📝</span></div>
-            <div class="tile-title">Demandes Horaires Intérim</div>
-            <div class="tile-desc">Créer, modifier ou supprimer les demandes d'horaires pour les agences intérim.</div>
+            <div class="tile-title"><?= t('Demandes Horaires Intérim', 'Aanvragen uren interim') ?></div>
+            <div class="tile-desc"><?= t('Créer, modifier ou supprimer les demandes d\'horaires pour les agences intérim.', 'Uuraanvragen voor de interimkantoren aanmaken, wijzigen of verwijderen.') ?></div>
         </a>
         <a href="interim_horaires.php" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">🤝</span></div>
-            <div class="tile-title">Matching Intérim</div>
-            <div class="tile-desc">Assigner les étudiants aux créneaux intérim, matching manuel ou automatique.</div>
+            <div class="tile-title"><?= t('Matching Intérim', 'Matching interim') ?></div>
+            <div class="tile-desc"><?= t('Assigner les étudiants aux créneaux intérim, matching manuel ou automatique.', 'Studenten toewijzen aan interim-tijdslots, handmatig of automatisch.') ?></div>
         </a>
         <a href="validation_demandes_horaires.php" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">✅</span></div>
-            <div class="tile-title">Validation demandes horaires</div>
-            <div class="tile-desc">Valider ou refuser les demandes d'horaires avant publication dans le matching.</div>
+            <div class="tile-title"><?= t('Validation demandes horaires', 'Validatie uuraanvragen') ?></div>
+            <div class="tile-desc"><?= t('Valider ou refuser les demandes d\'horaires avant publication dans le matching.', 'Uuraanvragen goedkeuren of weigeren vóór publicatie in de matching.') ?></div>
         </a>
         <a href="admin.php" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">👥</span></div>
-            <div class="tile-title">RH</div>
-            <div class="tile-desc">Gestion des comptes et scores.</div>
+            <div class="tile-title"><?= t('RH', 'HR') ?></div>
+            <div class="tile-desc"><?= t('Gestion des comptes et scores.', 'Beheer van accounts en scores.') ?></div>
         </a>
         <a href="admin_disponibilites_etudiants.php" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">🗓️</span></div>
-            <div class="tile-title">Dispos Etudiants</div>
-            <div class="tile-desc">Vue par semaine et par secteur des disponibilités étudiantes.</div>
+            <div class="tile-title"><?= t('Dispos Etudiants', 'Beschikbaarheid studenten') ?></div>
+            <div class="tile-desc"><?= t('Vue par semaine et par secteur des disponibilités étudiantes.', 'Overzicht per week en per sector van de beschikbaarheid van studenten.') ?></div>
         </a>
         <?php endif; ?>
         <a href="admin_questions.php" class="tile tile-admin">
             <div class="tile-media"><span class="tile-icon">⚙️</span></div>
-            <div class="tile-title">Gestion Questions</div>
-            <div class="tile-desc">Ajouter/Modifier les quiz.</div>
+            <div class="tile-title"><?= t('Gestion Questions', 'Beheer vragen') ?></div>
+            <div class="tile-desc"><?= t('Ajouter/Modifier les quiz.', 'Quizvragen toevoegen/wijzigen.') ?></div>
         </a>
         <?php endif; ?>
 

@@ -563,7 +563,7 @@ if (isset($studentsBySector['none'])) {
                     <h1><?php echo e(adminDisponibilitesT('Disponibilites etudiants', 'Beschikbaarheden studenten')); ?></h1>
                 </div>
                 <?php if ($isAgencyInterimViewer): ?>
-                    <a href="logout.php" class="back-link">⬅ <?php echo e(adminDisponibilitesT('Se deconnecter', 'Afmelden')); ?></a>
+                    <a href="logout.php" class="back-link" onclick="return confirm('<?= t('Êtes-vous sûr de vouloir vous déconnecter ?', 'Weet je zeker dat je je wilt afmelden?') ?>');">⬅ <?php echo e(adminDisponibilitesT('Se deconnecter', 'Afmelden')); ?></a>
                 <?php else: ?>
                     <a href="index.php" class="back-link">⬅ <?php echo e(adminDisponibilitesT("Retour a l'accueil", 'Terug naar start')); ?></a>
                 <?php endif; ?>

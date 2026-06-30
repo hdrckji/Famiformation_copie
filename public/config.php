@@ -6,6 +6,7 @@
 // 1. CHARGEMENT DES FONCTIONS ET CSRF
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/csrf.php';
+require_once __DIR__ . '/includes/lang.php';
 
 // Fallback défensif: évite le crash si le serveur charge une version incomplète de includes/functions.php
 if (!function_exists('loadEnv')) {
@@ -95,6 +96,9 @@ if (session_status() === PHP_SESSION_NONE) {
     ]);
     session_start();
 }
+
+// 3bis. LANGUE (FR / NL)
+initLang();
 
 // 4. INITIALISATION CSRF
 initCSRF();
