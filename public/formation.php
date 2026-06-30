@@ -157,6 +157,21 @@ $stmt = $db->prepare("SELECT * FROM formations_sessions
 $stmt->execute([$role]);
 $formations = $stmt->fetchAll();
 
+// Formations en ligne = contenu du magasin coché "à évaluer"
+require_once 'includes/modules.php';
+ensureModulesTable($db);
+$formationsEnLigne = [];
+try {
+    $rowsEnLigne = $db->query("SELECT * FROM modules WHERE a_evaluer = 1 AND is_active = 1 AND is_container = 0 ORDER BY nom ASC")->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rowsEnLigne as $rEnLigne) {
+        if (userCanSeeModule($rEnLigne, $role)) {
+            $formationsEnLigne[] = $rEnLigne;
+        }
+    }
+} catch (Exception $e) {
+    $formationsEnLigne = [];
+}
+
 // Migration colonne is_evaluation_target sur formations_sessions
 try {
     $colCheck = $db->query("SHOW COLUMNS FROM formations_sessions LIKE 'is_evaluation_target'");
@@ -263,6 +278,23 @@ $publicLabels = [
               <?php if (isset($_SESSION['role']) && $_SESSION['role'] !== 'teamcoach') : ?>
                  <a href="admin_formations.php" class="btn-admin-top">⚙️ Gérer les sessions</a>
               <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if (!empty($formationsEnLigne)): ?>
+        <h1>💻 Formations en ligne</h1>
+        <p style="color: #666; margin-bottom: 30px;">Formations à réaliser directement sur le site. Consultez le contenu, vous serez ensuite évalué.</p>
+        <div class="formations-grid">
+            <?php foreach ($formationsEnLigne as $fl): ?>
+            <div class="formation-card">
+                <div class="formation-title"><?= moduleIconHtml($fl, '1.4rem') ?> <?= htmlspecialchars($fl['nom']) ?></div>
+                <?php if (!empty($fl['description'])): ?>
+                    <div class="formation-desc"><?= htmlspecialchars($fl['description']) ?></div>
+                <?php endif; ?>
+                <a href="module.php?id=<?= (int) $fl['id'] ?>" class="btn btn-int" style="display:block; text-align:center; text-decoration:none; box-sizing:border-box;">Accéder à la formation</a>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <hr style="margin:34px 0 28px; border:none; border-top:1px solid #e3e3e3;">
         <?php endif; ?>
 
         <h1>📅 Formations Présentielles</h1>
