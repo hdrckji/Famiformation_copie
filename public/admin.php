@@ -506,10 +506,10 @@ $users = $db->query($query_str)->fetchAll();
                         </td>
                         <td><span class="muted-code"><?php echo htmlspecialchars($u['identifiant']); ?></span></td>
                         <td>
-                            <form method="POST" class="stack-form">
+                            <form method="POST" class="stack-form" onsubmit="return confirmEmailForm(this);">
                                 <?php echo csrfField(); ?>
                                 <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
-                                <input type="email" name="nouveau_email" value="<?php echo htmlspecialchars($u['email'] ?? ''); ?>" placeholder="Email" class="input-mini" style="width:140px;">
+                                <input type="email" name="nouveau_email" value="<?php echo htmlspecialchars($u['email'] ?? ''); ?>" data-original="<?php echo htmlspecialchars($u['email'] ?? ''); ?>" placeholder="Email" class="input-mini" style="width:140px;">
                                 <button type="submit" name="update_email" class="btn-save" style="padding:2px 8px; font-size:0.9em;">✉️</button>
                             </form>
                         </td>
@@ -601,6 +601,15 @@ $users = $db->query($query_str)->fetchAll();
     </div>
 </div>
 <script>
+// Confirmation seulement si l'adresse email est réellement modifiée
+function confirmEmailForm(form) {
+    var mail = form.querySelector('input[name="nouveau_email"]');
+    if (mail && mail.value.trim() !== (mail.getAttribute('data-original') || '')) {
+        return confirm('Modifier l\'adresse email de ce collaborateur ?');
+    }
+    return true;
+}
+
 // Confirmation si le profil change et/ou si un nouveau mot de passe est saisi
 function confirmRoleForm(form) {
     var changes = [];
