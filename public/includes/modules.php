@@ -216,75 +216,61 @@ if (!function_exists('ensureModulesTable')) {
     }
 
     /**
-     * Traduit le nom + la description d'un module en néerlandais via l'API Claude.
-     * Renvoie ['nom' => '', 'desc' => ''] si aucune clé API n'est configurée ou en cas d'échec
-     * (le site continue de fonctionner en français seul dans ce cas).
-     * Clé attendue dans la variable d'environnement ANTHROPIC_API_KEY.
+     * Traduit un texte FR -> NL via l'API gratuite MyMemory (sans clé).
+     * Renvoie '' en cas d'échec (le site reste alors en français, sans erreur).
+     * Astuce : définir MYMEMORY_EMAIL en variable d'environnement augmente le quota gratuit.
      */
-    function translateModuleToNl($nom, $desc)
+    function mymemoryTranslateFrToNl($text)
     {
-        $empty = ['nom' => '', 'desc' => ''];
-        $key = getenv('ANTHROPIC_API_KEY');
-        if ($key === false || $key === '') {
-            $key = $_ENV['ANTHROPIC_API_KEY'] ?? ($_SERVER['ANTHROPIC_API_KEY'] ?? '');
+        $text = trim((string) $text);
+        if ($text === '' || !function_exists('curl_init')) {
+            return '';
         }
-        $nom = trim((string) $nom);
-        $desc = trim((string) $desc);
-        if ($key === '' || ($nom === '' && $desc === '') || !function_exists('curl_init')) {
-            return $empty;
+        // MyMemory limite chaque requête à ~500 caractères
+        $text = mb_substr($text, 0, 500);
+        $url = 'https://api.mymemory.translated.net/get?langpair=fr|nl&q=' . rawurlencode($text);
+        $email = getenv('MYMEMORY_EMAIL');
+        if ($email !== false && $email !== '') {
+            $url .= '&de=' . rawurlencode($email);
         }
 
-        $payload = [
-            'model' => 'claude-opus-4-8',
-            'max_tokens' => 400,
-            'system' => "Tu traduis en néerlandais (NL) les champs d'un module d'une plateforme de formation. Garde un style concis et le même sens. Si un champ source est vide, renvoie une chaîne vide pour ce champ.",
-            'messages' => [[
-                'role' => 'user',
-                'content' => "Nom (FR): " . $nom . "\nDescription (FR): " . $desc,
-            ]],
-            'output_config' => [
-                'format' => [
-                    'type' => 'json_schema',
-                    'schema' => [
-                        'type' => 'object',
-                        'properties' => [
-                            'nom_nl' => ['type' => 'string'],
-                            'description_nl' => ['type' => 'string'],
-                        ],
-                        'required' => ['nom_nl', 'description_nl'],
-                        'additionalProperties' => false,
-                    ],
-                ],
-            ],
-        ];
-
-        $ch = curl_init('https://api.anthropic.com/v1/messages');
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'x-api-key: ' . $key,
-                'anthropic-version: 2023-06-01',
-            ],
-            CURLOPT_POSTFIELDS => json_encode($payload),
-            CURLOPT_TIMEOUT => 25,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_USERAGENT => 'Famiformation/1.0',
         ]);
         $resp = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($resp === false || $code < 200 || $code >= 300) {
-            return $empty;
+            return '';
         }
         $data = json_decode($resp, true);
-        $text = $data['content'][0]['text'] ?? '';
-        $parsed = json_decode($text, true);
-        if (!is_array($parsed)) {
-            return $empty;
+        $translated = $data['responseData']['translatedText'] ?? '';
+        $status = (int) ($data['responseStatus'] ?? 200);
+        if (!is_string($translated) || $translated === '' || $status !== 200) {
+            return '';
         }
+        // MyMemory glisse parfois un message d'avertissement dans translatedText
+        if (stripos($translated, 'MYMEMORY WARNING') !== false || stripos($translated, 'INVALID') !== false) {
+            return '';
+        }
+        return trim(html_entity_decode($translated, ENT_QUOTES, 'UTF-8'));
+    }
+
+    /**
+     * Traduit le nom + la description d'un module en néerlandais (MyMemory, gratuit, sans clé).
+     * Renvoie ['nom' => '', 'desc' => ''] si la traduction échoue.
+     */
+    function translateModuleToNl($nom, $desc)
+    {
+        $nom = trim((string) $nom);
+        $desc = trim((string) $desc);
         return [
-            'nom' => mb_substr(trim((string) ($parsed['nom_nl'] ?? '')), 0, 150),
-            'desc' => mb_substr(trim((string) ($parsed['description_nl'] ?? '')), 0, 500),
+            'nom'  => $nom !== ''  ? mb_substr(mymemoryTranslateFrToNl($nom), 0, 150)  : '',
+            'desc' => $desc !== '' ? mb_substr(mymemoryTranslateFrToNl($desc), 0, 500) : '',
         ];
     }
 
