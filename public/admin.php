@@ -363,9 +363,8 @@ $users = $db->query($query_str)->fetchAll();
         .col-email { width: 14%; }
         .col-interim { width: 13%; }
         .col-quiz { width: 8%; text-align: center; }
-        .col-role { width: 14%; }
-        .col-status { width: 7%; }
-        .col-status-date { width: 8%; }
+        .col-role { width: 20%; }
+        .col-status { width: 10%; }
         .col-actions { width: 12%; }
         .status-date-cell { text-align: center; white-space: nowrap; font-size: 0.85rem; }
         .name-link { color: #1d6f42; text-decoration: none; font-weight: 700; }
@@ -493,7 +492,6 @@ $users = $db->query($query_str)->fetchAll();
                         <th class="col-quiz">Quiz</th>
                         <th class="col-role">Profil</th>
                         <th class="col-status">Statut</th>
-                        <th class="col-status-date">Date statut</th>
                         <th class="col-actions">Actions</th>
                     </tr>
                 </thead>
@@ -562,13 +560,11 @@ $users = $db->query($query_str)->fetchAll();
                             <?php else: ?>
                                 <span class="status-badge status-active">Actif</span>
                             <?php endif; ?>
-                        </td>
-                        <td class="status-date-cell">
                             <?php
                                 $statutDate = $u['statut_date'] ?? null;
                                 $tsStatut = $statutDate ? strtotime((string) $statutDate) : false;
-                                echo $tsStatut ? htmlspecialchars(date('d/m/Y', $tsStatut)) : '<span class="muted-code">—</span>';
                             ?>
+                            <div style="margin-top:6px; font-size:0.76rem; color:#888;"><?= $tsStatut ? htmlspecialchars(date('d/m/Y', $tsStatut)) : '—' ?></div>
                         </td>
                         <td>
                             <?php if ($u['identifiant'] !== 'admin'): ?>
