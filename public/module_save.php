@@ -14,10 +14,11 @@ ensureModulesTable($db);
 // Nettoie la liste des profils soumis (uniquement des clés valides)
 function sanitizeModuleRoles($input)
 {
+    global $db;
     if (!is_array($input)) {
         return '';
     }
-    $valid = array_keys(moduleProfiles());
+    $valid = array_keys(moduleProfiles($db));
     $kept = array_values(array_intersect($valid, $input));
     return implode(',', $kept); // vide = tous
 }

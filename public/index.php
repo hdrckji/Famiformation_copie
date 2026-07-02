@@ -386,7 +386,7 @@ if (!empty($_SESSION['module_flash'])) {
                 <?= csrfField() ?>
                 <input type="hidden" name="action" value="create">
                 <input type="hidden" name="return" value="index.php">
-                <?php renderModuleFields('qcreate', [], moduleProfiles(), moduleIconChoices()); ?>
+                <?php renderModuleFields('qcreate', [], moduleProfiles($db), moduleIconChoices()); ?>
                 <div class="mm-modal-actions">
                     <button type="button" class="btn-cancel" onclick="document.getElementById('moduleCreateModal').style.display='none';">Annuler</button>
                     <button type="submit" class="btn-mm-create">Créer le module</button>

@@ -17,7 +17,7 @@ if (!empty($_SESSION['module_flash'])) {
     unset($_SESSION['module_flash']);
 }
 
-$profiles = moduleProfiles();
+$profiles = moduleProfiles($db);
 $icons    = moduleIconChoices();
 // renderModuleFields(), rolesLabel(), moduleIconHtml(), adminPasswordOk() viennent de includes/modules.php
 

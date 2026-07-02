@@ -155,7 +155,7 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
                     <input type="hidden" name="action" value="update">
                     <input type="hidden" name="id" value="<?= (int) $module['id'] ?>">
                     <input type="hidden" name="return" value="module.php?id=<?= (int) $module['id'] ?>">
-                    <?php renderModuleFields('medit', $module, moduleProfiles(), moduleIconChoices()); ?>
+                    <?php renderModuleFields('medit', $module, moduleProfiles($db), moduleIconChoices()); ?>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-cancel" onclick="document.getElementById('editModal').style.display='none';">Annuler</button>
                         <button type="submit" class="btn btn-create">Enregistrer</button>
@@ -174,7 +174,7 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
                     <input type="hidden" name="action" value="create">
                     <input type="hidden" name="parent_id" value="<?= (int) $module['id'] ?>">
                     <input type="hidden" name="return" value="module.php?id=<?= (int) $module['id'] ?>">
-                    <?php renderModuleFields('mcreate', [], moduleProfiles(), moduleIconChoices()); ?>
+                    <?php renderModuleFields('mcreate', [], moduleProfiles($db), moduleIconChoices()); ?>
                     <div class="modal-actions">
                         <button type="button" class="btn btn-cancel" onclick="document.getElementById('createModal').style.display='none';">Annuler</button>
                         <button type="submit" class="btn btn-create">Créer</button>
