@@ -371,7 +371,8 @@ $users = $db->query($query_str)->fetchAll();
         .name-link:hover { text-decoration: underline; }
         .muted-code { display: inline-block; background: #f4f7f6; border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; }
         .stack-form { display: flex; align-items: center; gap: 8px; }
-        .role-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 92px) 42px; gap: 8px; align-items: center; }
+        .role-form { display: flex; flex-direction: column; gap: 6px; }
+        .role-form-row { display: flex; gap: 6px; align-items: center; }
         .cell-note { font-size: 0.78rem; color: #777; margin-top: 6px; }
         .quiz-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 88px; padding: 8px 10px; border-radius: 999px; background: #f0f7f1; color: #2d5a37; font-size: 0.85rem; font-weight: 700; }
         .status-cell { text-align: center; }
@@ -390,10 +391,11 @@ $users = $db->query($query_str)->fetchAll();
         .btn-delete-link:hover { background: #f4caca; }
         .sticky-name { position: sticky; left: 0; background: #fff; z-index: 2; box-shadow: 8px 0 14px rgba(0,0,0,0.03); }
         th.sticky-name { background: #f8f9fa; z-index: 3; }
-        .role-form .input-mini,
         .stack-form .input-mini,
         .stack-form select { width: 100% !important; min-width: 0; }
-        .role-form .btn-save { width: 42px; padding: 6px 0; }
+        .role-form > select.input-mini { width: 100%; min-width: 0; }
+        .role-form-row .input-mini { flex: 1; min-width: 0; }
+        .role-form-row .btn-save { width: 42px; padding: 6px 0; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -512,7 +514,7 @@ $users = $db->query($query_str)->fetchAll();
                             </form>
                         </td>
                         <td>
-                            <form method="POST" class="stack-form">
+                            <form method="POST" class="stack-form" onsubmit="return confirm('Modifier l\'agence de ce collaborateur ?');">
                                 <?php echo csrfField(); ?>
                                 <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
                                 <select name="nouveau_interim" class="input-mini" style="width:180px;">
@@ -534,7 +536,7 @@ $users = $db->query($query_str)->fetchAll();
                             </span>
                         </td>
                         <td>
-                            <form method="POST" class="role-form">
+                            <form method="POST" class="role-form" onsubmit="return confirmRoleForm(this);">
                                 <?php echo csrfField(); ?>
                                 <input type="hidden" name="user_id" value="<?php echo $u['id']; ?>">
                                 <input type="hidden" name="nouveau_interim" value="<?php echo htmlspecialchars($u['interim'] ?? ''); ?>">
@@ -547,8 +549,10 @@ $users = $db->query($query_str)->fetchAll();
                                     <option value="admin" <?php if($u['role']=='admin') echo 'selected'; ?>>Admin</option>
                                     <option value="evaluateur" <?php if($u['role']=='evaluateur') echo 'selected'; ?>>Évaluateur</option>
                                 </select>
-                                <input type="password" name="nouveau_mdp" placeholder="Nouv. Pass" class="input-mini" style="width:80px;">
-                                <button type="submit" name="update_user" class="btn-save">💾</button>
+                                <div class="role-form-row">
+                                    <input type="password" name="nouveau_mdp" placeholder="Nouveau mot de passe" class="input-mini">
+                                    <button type="submit" name="update_user" class="btn-save">💾</button>
+                                </div>
                             </form>
                             <div class="cell-note">Le mot de passe peut rester vide si tu ne veux pas le changer.</div>
                         </td>
@@ -597,6 +601,15 @@ $users = $db->query($query_str)->fetchAll();
     </div>
 </div>
 <script>
+// Confirmation seulement si un nouveau mot de passe est réellement saisi
+function confirmRoleForm(form) {
+    var pw = form.querySelector('input[name="nouveau_mdp"]');
+    if (pw && pw.value.trim() !== '') {
+        return confirm('Modifier le mot de passe de ce collaborateur ?');
+    }
+    return true;
+}
+
 const roleField = document.getElementById('new_role');
 const interimField = document.getElementById('new_interim');
 
