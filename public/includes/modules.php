@@ -99,11 +99,11 @@ if (!function_exists('ensureModulesTable')) {
                 $setFlag('lock_existing_v1');
             }
 
-            // 3) Verrouiller les profils de base (une seule fois)
-            if (!$hasFlag('profiles_lock_base_v1')) {
+            // 3) Verrouiller les profils de base (rejoué en v2 pour rattraper l'existant)
+            if (!$hasFlag('profiles_lock_base_v2')) {
                 ensureProfilesTable($db);
                 $db->exec("UPDATE profils SET is_locked = 1 WHERE is_core = 1");
-                $setFlag('profiles_lock_base_v1');
+                $setFlag('profiles_lock_base_v2');
             }
         } catch (Exception $e) {
             // migration non critique : on ignore
@@ -130,6 +130,7 @@ if (!function_exists('ensureModulesTable')) {
             $chk = $db->query("SHOW COLUMNS FROM profils LIKE 'is_locked'");
             if ($chk && !$chk->fetch()) {
                 $db->exec("ALTER TABLE profils ADD COLUMN is_locked TINYINT(1) NOT NULL DEFAULT 0");
+                $db->exec("UPDATE profils SET is_locked = 1 WHERE is_core = 1");
             }
             $count = (int) $db->query("SELECT COUNT(*) FROM profils")->fetchColumn();
             if ($count === 0) {

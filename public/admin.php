@@ -162,8 +162,10 @@ if (isset($_POST['creer_user'])) {
                 $showNoEmailModal = true;
             }
 
-            // Avertissement (modale) si l'email OU le couple nom + prénom existe déjà
-            if (!$showNoEmailModal && !$confirmDuplicate) {
+            // Avertissement (modale) si l'email OU le couple nom + prénom existe déjà.
+            // Si la création sans email a déjà été confirmée, on ne redemande pas de
+            // confirmation de doublon : on va directement à la création.
+            if (!$showNoEmailModal && !$confirmDuplicate && !$confirmNoEmail) {
                 if ($email !== '') {
                     $checkDup = $db->prepare("SELECT COUNT(*) FROM utilisateurs WHERE email = ? OR (LOWER(nom) = LOWER(?) AND LOWER(prenom) = LOWER(?))");
                     $checkDup->execute([$email, $nom, $prenom]);
