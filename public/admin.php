@@ -49,6 +49,18 @@ try {
     $db->prepare("UPDATE utilisateurs SET interim = NULL WHERE interim = ?")->execute(["Pas d'agence"]);
 } catch (Exception $e) { /* ignore */ }
 
+// L'appli autorise volontairement les emails en double (modale "ajouter quand même").
+// On retire donc toute contrainte UNIQUE éventuelle sur la colonne `email`,
+// sinon la base rejette la création d'un 2e compte avec le même email.
+try {
+    $emailIdx = $db->query("SELECT DISTINCT INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'utilisateurs' AND COLUMN_NAME = 'email' AND NON_UNIQUE = 0")->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($emailIdx as $indexName) {
+        if ($indexName && strtoupper((string) $indexName) !== 'PRIMARY') {
+            $db->exec("ALTER TABLE utilisateurs DROP INDEX `" . str_replace('`', '', (string) $indexName) . "`");
+        }
+    }
+} catch (Exception $e) { /* pas de contrainte ou base indisponible : on ignore */ }
+
 $message = "";
 // Message "flash" survivant à une redirection (motif Post/Redirect/Get)
 if (!empty($_SESSION['admin_flash'])) {
@@ -209,6 +221,10 @@ if (isset($_POST['creer_user'])) {
                         if ($mailSent) {
                             $db->commit();
                             adminRedirect("<div class='alert success'>✅ Collaborateur créé. 📨 Le mail a bien été envoyé à " . e($email) . ".</div>");
+                        } elseif ($confirmDuplicate) {
+                            // Doublon confirmé par l'admin : on crée le compte même si le mail échoue
+                            $db->commit();
+                            adminRedirect("<div class='alert success'>✅ Collaborateur créé (doublon confirmé). ⚠️ Le mail n'a pas pu être envoyé — pensez à définir un mot de passe manuellement si besoin.</div>");
                         } else {
                             $db->rollBack();
                             $mailError = trim((string) getLastMailError());
