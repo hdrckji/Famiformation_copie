@@ -285,6 +285,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         $redirectTo = 'parametres.php';
+    } elseif ($action === 'translate_all') {
+        // Traduit en NL tous les modules encore sans traduction (ex : "Aide" créé par migration)
+        $rows = $db->query("SELECT id, nom, description FROM modules WHERE (nom_nl IS NULL OR nom_nl = '')")->fetchAll(PDO::FETCH_ASSOC);
+        $done = 0;
+        $upd = $db->prepare("UPDATE modules SET nom_nl = ?, description_nl = ? WHERE id = ?");
+        foreach ($rows as $m) {
+            $nl = translateModuleToNl($m['nom'], $m['description']);
+            if ($nl['nom'] !== '' || $nl['desc'] !== '') {
+                $upd->execute([
+                    $nl['nom'] !== '' ? $nl['nom'] : null,
+                    $nl['desc'] !== '' ? $nl['desc'] : null,
+                    $m['id'],
+                ]);
+                $done++;
+            }
+        }
+        $_SESSION['module_flash'] = "✅ Traduction NL : " . $done . " module(s) mis à jour.";
+        $redirectTo = 'parametres.php';
     }
 }
 
