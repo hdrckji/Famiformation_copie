@@ -98,7 +98,12 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
     <?php if ($isContainer): ?>
         <div class="tiles-container">
             <?php foreach ($children as $child): ?>
-                <a href="module.php?id=<?= (int) $child['id'] ?>" class="tile <?= ((int) $child['is_active'] !== 1) ? 'inactive' : '' ?>">
+                <?php
+                    $childLink = trim((string) ($child['link'] ?? ''));
+                    $childHref = $childLink !== '' ? $childLink : 'module.php?id=' . (int) $child['id'];
+                    $childExternal = (stripos($childLink, 'http') === 0);
+                ?>
+                <a href="<?= htmlspecialchars($childHref) ?>" class="tile <?= ((int) $child['is_active'] !== 1) ? 'inactive' : '' ?>"<?= $childExternal ? ' target="_blank" rel="noopener"' : '' ?>>
                     <?php if (!empty($child['a_evaluer'])): ?><span class="badge-eval">📝</span><?php endif; ?>
                     <div class="tile-icon"><?= moduleIconHtml($child, '3rem') ?></div>
                     <div class="tile-title"><?= htmlspecialchars(moduleNom($child)) ?></div>

@@ -139,6 +139,19 @@ if (!function_exists('ensureModulesTable')) {
                 }
                 $setFlag('seed_base_modules_v1');
             }
+
+            // 5) Place les VRAIS modules Becosoft / Logistique / Magasin dans « Aide »
+            //    (au lieu des sous-modules vides créés au départ)
+            if (!$hasFlag('reorg_aide_v2')) {
+                $aideId = (int) $db->query("SELECT id FROM modules WHERE nom = 'Aide' AND parent_id IS NULL ORDER BY id ASC LIMIT 1")->fetchColumn();
+                if ($aideId > 0) {
+                    // Supprime les sous-modules vides d'Aide (créés initialement)
+                    $db->prepare("DELETE FROM modules WHERE parent_id = ? AND (link IS NULL OR link = '') AND nom IN ('Becosoft', 'Logistique', 'Magasin')")->execute([$aideId]);
+                    // Rattache les modules de base correspondants sous Aide
+                    $db->prepare("UPDATE modules SET parent_id = ? WHERE parent_id IS NULL AND link IS NOT NULL AND link <> '' AND nom IN ('Becosoft', 'Logistique', 'Magasin')")->execute([$aideId]);
+                }
+                $setFlag('reorg_aide_v2');
+            }
         } catch (Exception $e) {
             // migration non critique : on ignore
         }
