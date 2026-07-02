@@ -370,8 +370,8 @@ if (!empty($_SESSION['module_flash'])) {
         <?php if (!$isAdmin && !userCanSeeModule($mod, $role)) { continue; } ?>
         <a href="module.php?id=<?= (int) $mod['id'] ?>" class="tile<?= ((int) $mod['is_active'] !== 1) ? ' tile-inactive' : '' ?>">
             <div class="tile-media"><?= moduleIconHtml($mod) ?></div>
-            <div class="tile-title"><?= htmlspecialchars($mod['nom']) ?></div>
-            <div class="tile-desc"><?= htmlspecialchars($mod['description'] ?? '') ?></div>
+            <div class="tile-title"><?= htmlspecialchars(moduleNom($mod)) ?></div>
+            <div class="tile-desc"><?= htmlspecialchars(moduleDesc($mod)) ?></div>
         </a>
         <?php endforeach; ?>
     </div>

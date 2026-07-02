@@ -35,6 +35,9 @@ if (!function_exists('ensureModulesTable')) {
                 'is_locked'  => "ALTER TABLE modules ADD COLUMN is_locked TINYINT(1) NOT NULL DEFAULT 0",
                 'uniformized' => "ALTER TABLE modules ADD COLUMN uniformized TINYINT(1) NOT NULL DEFAULT 0",
                 'a_evaluer'  => "ALTER TABLE modules ADD COLUMN a_evaluer TINYINT(1) NOT NULL DEFAULT 0",
+                'nom_nl'         => "ALTER TABLE modules ADD COLUMN nom_nl VARCHAR(150) NULL",
+                'description_nl' => "ALTER TABLE modules ADD COLUMN description_nl VARCHAR(500) NULL",
+                'link'           => "ALTER TABLE modules ADD COLUMN link VARCHAR(255) NULL",
             ];
             foreach ($extraColumns as $col => $ddl) {
                 $check = $db->query("SHOW COLUMNS FROM modules LIKE " . $db->quote($col));
@@ -210,6 +213,107 @@ if (!function_exists('ensureModulesTable')) {
         }
         $allowed = array_filter(array_map('trim', explode(',', $roles)));
         return in_array($role, $allowed, true);
+    }
+
+    /**
+     * Traduit le nom + la description d'un module en néerlandais via l'API Claude.
+     * Renvoie ['nom' => '', 'desc' => ''] si aucune clé API n'est configurée ou en cas d'échec
+     * (le site continue de fonctionner en français seul dans ce cas).
+     * Clé attendue dans la variable d'environnement ANTHROPIC_API_KEY.
+     */
+    function translateModuleToNl($nom, $desc)
+    {
+        $empty = ['nom' => '', 'desc' => ''];
+        $key = getenv('ANTHROPIC_API_KEY');
+        if ($key === false || $key === '') {
+            $key = $_ENV['ANTHROPIC_API_KEY'] ?? ($_SERVER['ANTHROPIC_API_KEY'] ?? '');
+        }
+        $nom = trim((string) $nom);
+        $desc = trim((string) $desc);
+        if ($key === '' || ($nom === '' && $desc === '') || !function_exists('curl_init')) {
+            return $empty;
+        }
+
+        $payload = [
+            'model' => 'claude-opus-4-8',
+            'max_tokens' => 400,
+            'system' => "Tu traduis en néerlandais (NL) les champs d'un module d'une plateforme de formation. Garde un style concis et le même sens. Si un champ source est vide, renvoie une chaîne vide pour ce champ.",
+            'messages' => [[
+                'role' => 'user',
+                'content' => "Nom (FR): " . $nom . "\nDescription (FR): " . $desc,
+            ]],
+            'output_config' => [
+                'format' => [
+                    'type' => 'json_schema',
+                    'schema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'nom_nl' => ['type' => 'string'],
+                            'description_nl' => ['type' => 'string'],
+                        ],
+                        'required' => ['nom_nl', 'description_nl'],
+                        'additionalProperties' => false,
+                    ],
+                ],
+            ],
+        ];
+
+        $ch = curl_init('https://api.anthropic.com/v1/messages');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'x-api-key: ' . $key,
+                'anthropic-version: 2023-06-01',
+            ],
+            CURLOPT_POSTFIELDS => json_encode($payload),
+            CURLOPT_TIMEOUT => 25,
+        ]);
+        $resp = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($resp === false || $code < 200 || $code >= 300) {
+            return $empty;
+        }
+        $data = json_decode($resp, true);
+        $text = $data['content'][0]['text'] ?? '';
+        $parsed = json_decode($text, true);
+        if (!is_array($parsed)) {
+            return $empty;
+        }
+        return [
+            'nom' => mb_substr(trim((string) ($parsed['nom_nl'] ?? '')), 0, 150),
+            'desc' => mb_substr(trim((string) ($parsed['description_nl'] ?? '')), 0, 500),
+        ];
+    }
+
+    /**
+     * Nom du module dans la langue courante (NL si dispo, sinon FR).
+     */
+    function moduleNom(array $m)
+    {
+        if (function_exists('currentLang') && currentLang() === 'nl') {
+            $nl = trim((string) ($m['nom_nl'] ?? ''));
+            if ($nl !== '') {
+                return $nl;
+            }
+        }
+        return (string) ($m['nom'] ?? '');
+    }
+
+    /**
+     * Description du module dans la langue courante (NL si dispo, sinon FR).
+     */
+    function moduleDesc(array $m)
+    {
+        if (function_exists('currentLang') && currentLang() === 'nl') {
+            $nl = trim((string) ($m['description_nl'] ?? ''));
+            if ($nl !== '') {
+                return $nl;
+            }
+        }
+        return (string) ($m['description'] ?? '');
     }
 
     /**

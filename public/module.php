@@ -84,9 +84,9 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
     <a href="<?= !empty($module['parent_id']) ? 'module.php?id=' . (int) $module['parent_id'] : 'index.php' ?>" class="back-link">⬅ Retour</a>
     <div class="header">
         <img src="logo.png" alt="Famiflora" class="logo-main"><br>
-        <h1><?= moduleIconHtml($module, '1.6rem') ?> <?= htmlspecialchars($module['nom']) ?></h1>
-        <?php if (!empty($module['description'])): ?>
-            <div class="desc"><?= htmlspecialchars($module['description']) ?></div>
+        <h1><?= moduleIconHtml($module, '1.6rem') ?> <?= htmlspecialchars(moduleNom($module)) ?></h1>
+        <?php if (moduleDesc($module) !== ''): ?>
+            <div class="desc"><?= htmlspecialchars(moduleDesc($module)) ?></div>
         <?php endif; ?>
         <?php if (!$isContainer && !empty($module['a_evaluer'])): ?>
             <div><span class="badge-eval">📝 <?= t('À évaluer', 'Te evalueren') ?></span></div>
@@ -101,8 +101,8 @@ $children = $isContainer ? getModules($db, $moduleId, !$isAdmin) : [];
                 <a href="module.php?id=<?= (int) $child['id'] ?>" class="tile <?= ((int) $child['is_active'] !== 1) ? 'inactive' : '' ?>">
                     <?php if (!empty($child['a_evaluer'])): ?><span class="badge-eval">📝</span><?php endif; ?>
                     <div class="tile-icon"><?= moduleIconHtml($child, '3rem') ?></div>
-                    <div class="tile-title"><?= htmlspecialchars($child['nom']) ?></div>
-                    <div class="tile-desc"><?= htmlspecialchars($child['description'] ?? '') ?></div>
+                    <div class="tile-title"><?= htmlspecialchars(moduleNom($child)) ?></div>
+                    <div class="tile-desc"><?= htmlspecialchars(moduleDesc($child)) ?></div>
                 </a>
             <?php endforeach; ?>
             <?php if (empty($children)): ?>

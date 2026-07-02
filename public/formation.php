@@ -304,9 +304,9 @@ $publicLabels = [
         <div class="formations-grid">
             <?php foreach ($formationsEnLigne as $fl): ?>
             <div class="formation-card">
-                <div class="formation-title"><?= moduleIconHtml($fl, '1.4rem') ?> <?= htmlspecialchars($fl['nom']) ?></div>
-                <?php if (!empty($fl['description'])): ?>
-                    <div class="formation-desc"><?= htmlspecialchars($fl['description']) ?></div>
+                <div class="formation-title"><?= moduleIconHtml($fl, '1.4rem') ?> <?= htmlspecialchars(moduleNom($fl)) ?></div>
+                <?php if (moduleDesc($fl) !== ''): ?>
+                    <div class="formation-desc"><?= htmlspecialchars(moduleDesc($fl)) ?></div>
                 <?php endif; ?>
                 <a href="module.php?id=<?= (int) $fl['id'] ?>" class="btn btn-int" style="display:block; text-align:center; text-decoration:none; box-sizing:border-box;">Accéder à la formation</a>
             </div>

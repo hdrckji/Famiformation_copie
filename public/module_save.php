@@ -114,8 +114,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['module_flash'] = "❌ Le nom du module est obligatoire.";
         } else {
             $iconImage = handleModuleIconUpload();
+            $nl = translateModuleToNl($nom, $description);
             $stmt = $db->prepare(
-                "INSERT INTO modules (nom, description, is_container, parent_id, icon, roles, icon_image) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO modules (nom, description, is_container, parent_id, icon, roles, icon_image, nom_nl, description_nl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             );
             $stmt->execute([
                 mb_substr($nom, 0, 150),
@@ -125,6 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mb_substr($icon, 0, 16),
                 $roles,
                 $iconImage,
+                $nl['nom'] !== '' ? $nl['nom'] : null,
+                $nl['desc'] !== '' ? $nl['desc'] : null,
             ]);
             $_SESSION['module_flash'] = "✅ Module « " . $nom . " » créé.";
         }
@@ -150,8 +153,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $uploaded = handleModuleIconUpload();
                 if ($uploaded !== null) { $iconImage = $uploaded; }
 
+                $nl = translateModuleToNl($nom, $description);
                 $stmt = $db->prepare(
-                    "UPDATE modules SET nom = ?, description = ?, is_container = ?, icon = ?, roles = ?, icon_image = ? WHERE id = ?"
+                    "UPDATE modules SET nom = ?, description = ?, is_container = ?, icon = ?, roles = ?, icon_image = ?, nom_nl = ?, description_nl = ? WHERE id = ?"
                 );
                 $stmt->execute([
                     mb_substr($nom, 0, 150),
@@ -160,6 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     mb_substr($icon, 0, 16),
                     $roles,
                     $iconImage,
+                    $nl['nom'] !== '' ? $nl['nom'] : null,
+                    $nl['desc'] !== '' ? $nl['desc'] : null,
                     $id,
                 ]);
                 $_SESSION['module_flash'] = "✅ Module « " . $nom . " » modifié.";
