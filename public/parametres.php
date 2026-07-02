@@ -165,6 +165,7 @@ foreach ($db->query("SELECT interim, COUNT(*) AS c FROM utilisateurs WHERE inter
                                 <?= $depth > 0 ? '↳ ' : '' ?><strong><?= htmlspecialchars($m['nom']) ?></strong>
                                 <?php if (!empty($m['is_locked'])): ?> <span title="Verrouillé">🔒</span><?php endif; ?>
                                 <div class="muted" style="font-size:0.82rem;"><?= htmlspecialchars($m['description'] ?? '') ?></div>
+                                <?php if (!empty($m['link'])): ?><div class="muted" style="font-size:0.76rem;">🔗 module de base → <?= htmlspecialchars($m['link']) ?></div><?php endif; ?>
                             </div>
                         </td>
                         <td><?= !empty($m['is_container']) ? 'Conteneur' : 'Contenu' ?></td>
@@ -173,7 +174,11 @@ foreach ($db->query("SELECT interim, COUNT(*) AS c FROM utilisateurs WHERE inter
                             <?php if ((int) $m['is_active'] === 1): ?><span class="pill on">Actif</span><?php else: ?><span class="pill off">Inactif</span><?php endif; ?>
                         </td>
                         <td>
-                            <button type="button" class="btn btn-light" onclick="askPassword('toggle_lock', <?= (int) $m['id'] ?>)"><?= !empty($m['is_locked']) ? '🔓 Déverrouiller' : '🔒 Verrouiller' ?></button>
+                            <?php if (!empty($m['is_locked'])): ?>
+                                <button type="button" class="btn" style="background:#fde8c8; color:#8a5a00;" title="Verrouillé — cliquer pour déverrouiller (mot de passe requis)" onclick="askPassword('toggle_lock', <?= (int) $m['id'] ?>)">🔒 Verrouillé</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-light" title="Déverrouillé — cliquer pour verrouiller (mot de passe requis)" onclick="askPassword('toggle_lock', <?= (int) $m['id'] ?>)">🔓 Déverrouillé</button>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <div class="row-actions">
@@ -262,7 +267,11 @@ foreach ($db->query("SELECT interim, COUNT(*) AS c FROM utilisateurs WHERE inter
                         <td class="muted"><?= htmlspecialchars($p['cle']) ?></td>
                         <td><?= (int) ($roleCounts[$p['cle']] ?? 0) ?></td>
                         <td>
-                            <button type="button" class="btn btn-light" onclick="askPassword('toggle_lock_profile', <?= (int) $p['id'] ?>)"><?= !empty($p['is_locked']) ? '🔓 Déverrouiller' : '🔒 Verrouiller' ?></button>
+                            <?php if (!empty($p['is_locked'])): ?>
+                                <button type="button" class="btn" style="background:#fde8c8; color:#8a5a00;" title="Verrouillé — cliquer pour déverrouiller (mot de passe requis)" onclick="askPassword('toggle_lock_profile', <?= (int) $p['id'] ?>)">🔒 Verrouillé</button>
+                            <?php else: ?>
+                                <button type="button" class="btn btn-light" title="Déverrouillé — cliquer pour verrouiller (mot de passe requis)" onclick="askPassword('toggle_lock_profile', <?= (int) $p['id'] ?>)">🔓 Déverrouillé</button>
+                            <?php endif; ?>
                         </td>
                         <td>
                             <?php if (!empty($p['is_locked'])): ?>

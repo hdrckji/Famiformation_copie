@@ -367,6 +367,7 @@ if (!empty($_SESSION['module_flash'])) {
         <?php endif; ?>
 
         <?php foreach ($dynamicModules as $mod): ?>
+        <?php if (!empty($mod['link'])) { continue; } // modules de base : déjà affichés par les tuiles ci-dessus ?>
         <?php if (!$isAdmin && !userCanSeeModule($mod, $role)) { continue; } ?>
         <a href="module.php?id=<?= (int) $mod['id'] ?>" class="tile<?= ((int) $mod['is_active'] !== 1) ? ' tile-inactive' : '' ?>">
             <div class="tile-media"><?= moduleIconHtml($mod) ?></div>

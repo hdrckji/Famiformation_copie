@@ -108,6 +108,37 @@ if (!function_exists('ensureModulesTable')) {
                 $db->exec("UPDATE profils SET is_locked = 1 WHERE is_core = 1");
                 $setFlag('profiles_lock_base_v2');
             }
+
+            // 4) Recense les tuiles de l'accueil comme modules de base (verrouillés) dans la gestion
+            if (!$hasFlag('seed_base_modules_v1')) {
+                $nonEtu = 'employe_magasin,teamcoach,mentor,employe_logistique,admin,evaluateur';
+                $base = [
+                    // [nom, description, icône, rôles (accès), lien]
+                    ['Onboarding', 'Bienvenue chez Famiflora — découverte de notre univers.', '🚀', '', 'onboarding.php'],
+                    ['Formation', 'Formations en ligne et en présentiel.', '📅', '', 'formation.php'],
+                    ['Magasin', 'Procédures de vente et caisses.', '🛒', 'admin,teamcoach,mentor,employe_magasin', 'magasin.php'],
+                    ['Management', 'Outils et formations pour managers et mentors.', '🧑‍💼', 'admin,teamcoach,mentor', 'management.php'],
+                    ['Becosoft', 'Logiciel de gestion de stock.', '💻', $nonEtu, 'formation_becosoft.php'],
+                    ['Formation Caisse', 'Parcours rapide sur l\'utilisation de la caisse.', '💳', 'etudiant', 'formation-caisse.php'],
+                    ['Mes disponibilités', 'Jours de disponibilité sur les 30 prochains jours.', '🗓️', 'etudiant', 'student_disponibilites.php'],
+                    ['Mes horaires attribués', 'Créneaux passés, du jour et futurs (lecture seule).', '🕒', 'etudiant', 'mon_horaire.php'],
+                    ['Logistique', 'Gestion des flux et des stocks.', '📦', 'admin,employe_logistique,teamcoach,mentor', 'logistique.php'],
+                    ['Classement', 'Tableau des scores et points.', '🏆', $nonEtu, 'classement.php'],
+                    ['Sécurité au travail', 'Chaussures de sécurité & secourisme.', '🦺', $nonEtu, 'securite_travail.php'],
+                    ['Famijob', 'Plateforme Famijob (gestion des jobs étudiants).', '💼', 'admin,teamcoach', 'https://student.famiformation.com'],
+                    ['Demandes Horaires Intérim', 'Créer/modifier/supprimer les demandes d\'horaires intérim.', '📝', 'admin', 'interim_horaires_demandes.php'],
+                    ['Matching Intérim', 'Assigner les étudiants aux créneaux intérim.', '🤝', 'admin', 'interim_horaires.php'],
+                    ['Validation demandes horaires', 'Valider ou refuser les demandes d\'horaires.', '✅', 'admin', 'validation_demandes_horaires.php'],
+                    ['RH', 'Gestion des comptes et scores.', '👥', 'admin', 'admin.php'],
+                    ['Dispos Etudiants', 'Disponibilités étudiantes par semaine et secteur.', '🗓️', 'admin', 'admin_disponibilites_etudiants.php'],
+                    ['Gestion Questions', 'Ajouter / modifier les quiz.', '⚙️', 'admin,teamcoach', 'admin_questions.php'],
+                ];
+                $insBase = $db->prepare("INSERT INTO modules (nom, description, is_container, parent_id, icon, roles, is_active, is_locked, link) VALUES (?, ?, 0, NULL, ?, ?, 1, 1, ?)");
+                foreach ($base as $b) {
+                    $insBase->execute([$b[0], $b[1], $b[2], $b[3], $b[4]]);
+                }
+                $setFlag('seed_base_modules_v1');
+            }
         } catch (Exception $e) {
             // migration non critique : on ignore
         }
